@@ -92,6 +92,32 @@ def align_with_references(test_sequence, references_dir='data/reference_sequence
         print(f"Error reading the test sequence file: {e}")
         return None
 
+# Check what is the gene region with most matches and return the gene region. If more than two gene regions have the same score, return all of them.
+def get_gene_region(test_aligned, ref_aligned, gene_ranges):
+    gene_scores = {}
+    for gene, (start, end) in gene_ranges.items():
+        gene_seq = test_aligned[start - 1:end]
+        score = calculate_alignment_score(gene_seq, ref_aligned[start - 1:end])
+        gene_scores[gene] = score
+
+    max_score = max(gene_scores.values())
+    gene_region = [gene for gene, score in gene_scores.items() if score == max_score]
+    return gene_region
+
+# Check what gene regions have base pair letters instead of '-' in the test sequence and return the gene regions.
+def get_present_gene_regions(test_aligned, gene_ranges):
+    present_gene_regions = []
+    for gene, (start, end) in gene_ranges.items():
+        gene_seq = test_aligned[start - 1:end]
+        #check if there is any other value other than '-' in that region
+        if any([base != '-' for base in gene_seq]):
+            present_gene_regions.append(gene)
+    #remove duplicates
+    present_gene_regions = list(set(present_gene_regions))
+    return present_gene_regions
+
+
+
 def main():
     #check if sequence folder does not exist to convert the data
     reference_sequences = pd.read_csv('data/sequenceswithlocations.tsv', sep='\t')
@@ -106,6 +132,8 @@ def main():
 
     # Align all sequences from user_sequences folder with the reference sequences
     try:
+        final_table = pd.DataFrame(columns=['Sequence', 'Reference', 'Subtype', 'Most Matching Gene Region', 'Present Gene Regions'])
+
         for file in os.listdir('data/user_sequences/'):
             test_sequence = f'data/user_sequences/{file}'
             sequence_name = file.split('.')[0]
@@ -130,11 +158,20 @@ def main():
                     output_file.write('Gene\tSequence\n')
                     for gene, (start, end) in gene_ranges.items():
                         gene_seq = test_aligned[start - 1:end]
-                        print(f"Gene {gene} start-end position: {start}-{end}")
-                        print(f"Gene {gene} sequence: {gene_seq}")
                         output_file.write(f'{gene}\t{gene_seq}\n')
+
+                # get gene region with most matches
+                region = get_gene_region(test_aligned, ref_aligned, gene_ranges)
+                # get gene regions with base pair letters
+                present_regions = get_present_gene_regions(test_aligned, gene_ranges)
+
+                row = pd.Series([file, ref_file.split('.')[0], ref_file.split('_')[0],
+                                 str(region), str(present_regions)], index=final_table.columns)
+                final_table = final_table.append(row, ignore_index=True)
             else:
                 print(f"No best alignment found for file {file}.")
+
+        final_table.to_csv('data/final_results/final_table.tsv', sep='\t', index=False)
 
     except:
         print('Error aligning sequences. Check user_sequences folder')

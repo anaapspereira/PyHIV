@@ -64,6 +64,9 @@ def download_data():
     references = references[references['features'].notnull() & references['features'].apply(lambda x: bool(x))]
     references = references[references['sequence'].notnull() & references['sequence'].apply(lambda x: bool(x))]
 
+    #remove rows with subtype equal to 'N','P', 'CPZ', 'GOR' # or 'O'
+    references = references[~references['subtype'].isin(['N','P', 'O', 'CPZ', 'GOR'])]
+
     return references
 
 def main():
