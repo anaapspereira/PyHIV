@@ -17,8 +17,8 @@ def convert_to_fasta_files(input_file):
             sequence = row['sequence']
             subtype = row['subtype']
             accession = row['accession']
-            with open(f'data/reference_sequences/{subtype}_{accession}.fasta', 'w') as output_file:
-                output_file.write(f'>{subtype}_{accession}\n')
+            with open(f'data/reference_sequences/{accession}-{subtype}.fasta', 'w') as output_file:
+                output_file.write(f'>{accession}-{subtype}\n')
                 output_file.write(f'{sequence}\n')
     except Exception as e:
         print(f"Error converting data: {e}")
@@ -116,8 +116,6 @@ def get_present_gene_regions(test_aligned, gene_ranges):
     present_gene_regions = list(set(present_gene_regions))
     return present_gene_regions
 
-
-
 def main():
     #check if sequence folder does not exist to convert the data
     reference_sequences = pd.read_csv('data/sequenceswithlocations.tsv', sep='\t')
@@ -143,7 +141,7 @@ def main():
                 print(f"Best alignment for {file} found with {ref_file}")
                 # get gene ranges from reference file based on ref_file name
                 gene_ranges = ast.literal_eval(
-                    reference_sequences[reference_sequences['accession'] == ref_file.split('_')[1].split('.')[0]][
+                    reference_sequences[reference_sequences['accession'] == ref_file.split('-')[0]][
                         'features'].values[0])
                 if not os.path.exists('data/final_results/'):
                     os.mkdir('data/final_results')
@@ -165,7 +163,7 @@ def main():
                 # get gene regions with base pair letters
                 present_regions = get_present_gene_regions(test_aligned, gene_ranges)
 
-                row = pd.Series([file, ref_file.split('.')[0], ref_file.split('_')[0],
+                row = pd.Series([file, ref_file.split('.')[0], ref_file.split('-')[1].split('.')[0],
                                  str(region), str(present_regions)], index=final_table.columns)
                 final_table = final_table.append(row, ignore_index=True)
             else:
