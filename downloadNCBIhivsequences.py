@@ -1,10 +1,4 @@
-import os
-import pandas as pd
 from Bio import Entrez, SeqIO
-import subprocess
-from Bio import AlignIO
-import ast
-from Bio.SeqRecord import SeqRecord
 
 #download all complete HIV genome sequences from NCBI
 def download_hiv_sequences(search_term, output_folder, output_file):
