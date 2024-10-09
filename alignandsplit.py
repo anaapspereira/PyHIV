@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from Bio import Entrez, SeqIO
+from Bio import SeqIO
 import subprocess
 from Bio import AlignIO
 import ast
