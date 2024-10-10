@@ -151,20 +151,28 @@ def main():
                 with open(final_alignment_file, 'w') as output_file:
                     output_file.write(f">Reference {ref_file.split('.')[0]}\n{ref_aligned}\n")
                     output_file.write(f'>{sequence_name}\n{test_aligned}\n')
-                final_gene_file = f'data/final_results/gene_sequences_{sequence_name}.tsv'
-                with open(final_gene_file, 'w') as output_file:
-                    output_file.write('Gene\tSequence\n')
-                    for gene, (start, end) in gene_ranges.items():
-                        gene_seq = test_aligned[start - 1:end]
-                        output_file.write(f'{gene}\t{gene_seq}\n')
+
+                # final_gene_file = f'data/final_results/gene_sequences_{sequence_name}.tsv'
+                # with open(final_gene_file, 'w') as output_file:
+                #     output_file.write('Gene\tSequence\n')
+                #     for gene, (start, end) in gene_ranges.items():
+                #         gene_seq = test_aligned[start - 1:end]
+                #         output_file.write(f'{gene}\t{gene_seq}\n')
 
                 # get gene region with most matches
                 region = get_gene_region(test_aligned, ref_aligned, gene_ranges)
                 # get gene regions with base pair letters
                 present_regions = get_present_gene_regions(test_aligned, gene_ranges)
 
+                # save gene regions fasta in each present regions specific gene region folder
+                for gene in present_regions:
+                    if not os.path.exists(f'data/final_results/{gene}/'):
+                        os.mkdir(f'data/final_results/{gene}/')
+                    with open(f'data/final_results/{gene}/{sequence_name}_{gene}.fasta', 'w') as output_file:
+                        output_file.write(f'>{sequence_name}\n{test_aligned[gene_ranges[gene][0] - 1:gene_ranges[gene][1]]}\n')
+                # save the results in a final global table
                 row = pd.Series([file, ref_file.split('.')[0], ref_file.split('-')[1].split('.')[0],
-                                 str(region), str(present_regions)], index=final_table.columns)
+                                 str(region).strip("[]"), str(present_regions).strip("[]")], index=final_table.columns)
                 final_table = final_table.append(row, ignore_index=True)
             else:
                 print(f"No best alignment found for file {file}.")
@@ -174,8 +182,6 @@ def main():
     except:
         print('Error aligning sequences. Check user_sequences folder')
         return None
-
-
 
 
 if __name__ == "__main__":
