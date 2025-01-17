@@ -5,7 +5,7 @@ import os
 #Get accession numbers from the Los Alamos reference genome file
 def get_accession_numbers():
     try:
-        references = pd.read_csv('../../data/HIV1_REF_2023_genome_DNA.csv', header=None)
+        references = pd.read_csv('reference_genomes/HIV1_REF_2023_genome_DNA.csv', header=None)
         references[['subtype', 'country', 'year', 'isolate']] = references[0].str.split('.', expand=True).iloc[:, 1:5]
         references['accession'] = references[0].str.strip().str.split('.').str[-1]
         references['align fasta'] = references[1]
