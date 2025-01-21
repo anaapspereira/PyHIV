@@ -8,32 +8,25 @@ def get_accession_numbers():
         references = pd.read_csv('data/HIV1_REF_2023_genome_DNA.csv', header=None)
         references[['subtype', 'country', 'year', 'isolate']] = references[0].str.split('.', expand=True).iloc[:, 1:5]
         references['accession'] = references[0].str.strip().str.split('.').str[-1]
-        references['align fasta'] = references[1]
+        references['aligned fasta'] = references[1]
         references.drop(columns=[0,1], inplace=True)
         return references
     except:
         print('Error reading data/HIV1_REF_2023_genome_DNA.csv')
         return None
 
-#Download the sequence features for each accession number from NCBI
+#get gene locations for each subtype sequence reference from NCBI
 def fetch_features(accession_id):
     try:
-        handle = Entrez.efetch(db="nucleotide", id=accession_id, rettype="gb", retmode="text")
-        record = SeqIO.read(handle, "genbank")
-        handle.close()
-        locations = get_gene_locations(record.features)
-        return locations
-    except Exception as e:
-        print(f"Error fetching {accession_id}: {e}")
-        return None
-
-#download the sequence fasta for each accession number from NCBI
-def fetch_sequence(accession_id):
-    try:
-        handle = Entrez.efetch(db="nucleotide", id=accession_id, rettype="fasta", retmode="text")
-        record = SeqIO.read(handle, "fasta")
-        handle.close()
-        return record.seq
+        if accession_id =="K03455":
+            locations = get_hxb2_locations()
+            return (locations)
+        else:
+            handle = Entrez.efetch(db="nucleotide", id=accession_id, rettype="gb", retmode="text")
+            record = SeqIO.read(handle, "genbank")
+            handle.close()
+            locations = get_gene_locations(record.features)
+            return locations
     except Exception as e:
         print(f"Error fetching {accession_id}: {e}")
         return None
@@ -49,6 +42,15 @@ def get_gene_locations(features):
             gene_ranges[gene_name] = (start, end)
     return gene_ranges
 
+def get_hxb2_locations():
+    #get hxb2 location from HXB2_coordinates.csv
+    hxb2_locations = pd.read_csv('data/HXB2_coordinates.csv', sep='\t')
+    #set start location to coordinate value before -
+    hxb2_locations[['start', 'end']] = hxb2_locations['HXB2 coordinates'].str.extract(r'(\d+)\s*-\s*(\d+)').astype(int)
+    hxb2_locations['gene'] = hxb2_locations['Fragment'].str.replace('"', '\'')
+    hxb2_locations = hxb2_locations[['gene','start','end']]
+    locations = hxb2_locations.set_index('gene')[['start', 'end']].apply(tuple, axis=1).to_dict()
+    return locations
 
 def download_data():
     # Get accession numbers from the Los Alamos reference genome file
@@ -57,12 +59,10 @@ def download_data():
     Entrez.email = "your_email@example.com"
 
     references['features'] = references['accession'].apply(lambda x: fetch_features(x))
-    references['sequence'] = references['accession'].apply(lambda x: fetch_sequence(x))
+    references['sequence'] = references['aligned fasta'].str.replace('-','')
 
-    #remove rows with missing features or sequences or empty dictionaries in features or sequences
-
+    #remove rows with missing features or empty
     references = references[references['features'].notnull() & references['features'].apply(lambda x: bool(x))]
-    references = references[references['sequence'].notnull() & references['sequence'].apply(lambda x: bool(x))]
 
     #remove rows with subtype equal to 'N','P', 'CPZ', 'GOR' # or 'O'
     references = references[~references['subtype'].isin(['N','P', 'O', 'CPZ', 'GOR'])]
