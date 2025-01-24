@@ -13,6 +13,7 @@ def get_gene_region(test_aligned, ref_aligned, gene_ranges):
     gene_region = [gene for gene, score in gene_scores.items() if score == max_score]
     return gene_region
 
+
 # Check what gene regions have base pair letters instead of '-' in the test sequence and return the gene regions.
 def get_present_gene_regions(test_aligned, gene_ranges):
     present_gene_regions = []

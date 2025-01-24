@@ -1,4 +1,3 @@
-#Align testing sequence with sequences from references folder to find best alignment with MAFFT
 import os
 
 from Bio import SeqIO
@@ -7,6 +6,7 @@ from hivseqsplit.align import mafft_align
 from hivseqsplit.loading import REFERENCE_GENOMES_FASTAS_DIR
 
 
+# Align testing sequence with sequences from references folder to find best alignment with MAFFT
 def align_with_references(test_sequence, references_dir=None):
     if references_dir is None:
         references_dir = REFERENCE_GENOMES_FASTAS_DIR
@@ -32,6 +32,7 @@ def align_with_references(test_sequence, references_dir=None):
     # except Exception as e:
     #     print(f"Error reading the test sequence file: {e}")
     #     return None
+
 
 # Calculate the alignment score between two sequences
 def calculate_alignment_score(seq1, seq2):
