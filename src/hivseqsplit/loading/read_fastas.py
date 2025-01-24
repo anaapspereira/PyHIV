@@ -36,7 +36,8 @@ def read_input_fastas(input_folder: str) -> List[Tuple[str, str]]:
         file_path = os.path.join(input_folder, file)
         try:
             for record in SeqIO.parse(file_path, 'fasta'):
-                sequences.append((record.id, str(record.seq)))
+                # sequences.append((record.id, str(record.seq)))
+                sequences.append(record)
                 logging.info(f"Read sequence {record.id}")
         except Exception as e:
             logging.error(f"Error reading {file_path}: {e}")
