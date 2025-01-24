@@ -1,0 +1,3 @@
+EMAIL: "youremail@example.com"
+SEARCH_TERM: "HIV-1[Organism] AND complete genome[Title]"
+OUTPUT_FOLDER: "output/"
