@@ -6,7 +6,8 @@ import os
 import pandas as pd
 
 from hivseqsplit.align import align_with_references
-from hivseqsplit.loading import read_input_fastas, REFERENCE_GENOMES_DIR
+from hivseqsplit.loading import read_input_fastas, REFERENCE_GENOMES_DIR, REFERENCE_GENOMES_FASTAS_DIR, \
+    HXB2_GENOME_FASTA_DIR
 from hivseqsplit.split import get_gene_region, get_present_gene_regions
 
 
@@ -17,10 +18,9 @@ def HIMAPS(fastas_dir: str, subtyping: bool = True, splitting: bool = True, outp
         columns=['Sequence', 'Reference', 'Subtype', 'Most Matching Gene Region', 'Present Gene Regions'])
     for fasta in user_fastas:
         if subtyping:
-            best_alignment = align_with_references(fasta)
+            best_alignment = align_with_references(fasta, references_dir=REFERENCE_GENOMES_FASTAS_DIR)
         else:
-            # TODO: align with HXB2
-            best_alignment = None
+            best_alignment = align_with_references(fasta, references_dir=HXB2_GENOME_FASTA_DIR)
         sequence_name = fasta.id
         if best_alignment is not None:
             test_aligned, ref_aligned, ref_file = best_alignment
