@@ -1,38 +1,43 @@
 __version__ = "0.0.1"
 
 import ast
-import os
+from pathlib import Path
 
 import pandas as pd
 
 from hivseqsplit.align import align_with_references
 from hivseqsplit.loading import read_input_fastas, REFERENCE_GENOMES_DIR, REFERENCE_GENOMES_FASTAS_DIR, \
-    HXB2_GENOME_FASTA_DIR
+    HXB2_GENOME_FASTA_DIR, SEQUENCES_WITH_LOCATION
 from hivseqsplit.split import get_gene_region, get_present_gene_regions
+
+FINAL_TABLE_COLUMNS = ['Sequence', 'Reference', 'Subtype', 'Most Matching Gene Region', 'Present Gene Regions']
 
 
 def HIMAPS(fastas_dir: str, subtyping: bool = True, splitting: bool = True, output_dir: str = None):
+    fastas_dir = Path(fastas_dir)
+    output_dir = Path(output_dir) or Path('HIMAPS_results/')
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     user_fastas = read_input_fastas(fastas_dir)
-    reference_sequences = pd.read_csv(os.path.join(REFERENCE_GENOMES_DIR, 'sequences_with_locations.tsv'), sep='\t')
-    final_table = pd.DataFrame(
-        columns=['Sequence', 'Reference', 'Subtype', 'Most Matching Gene Region', 'Present Gene Regions'])
+    reference_sequences = pd.read_csv(SEQUENCES_WITH_LOCATION, sep='\t')
+
+    final_table = pd.DataFrame(columns=FINAL_TABLE_COLUMNS)
     for fasta in user_fastas:
         if subtyping:
             best_alignment = align_with_references(fasta, references_dir=REFERENCE_GENOMES_FASTAS_DIR)
         else:
             best_alignment = align_with_references(fasta, references_dir=HXB2_GENOME_FASTA_DIR)
         sequence_name = fasta.id
-        if best_alignment is not None:
+        if best_alignment is None:
+            continue
+        else:
             test_aligned, ref_aligned, ref_file = best_alignment
             # get gene ranges from reference file based on ref_file name
             gene_ranges = ast.literal_eval(
-                reference_sequences[reference_sequences['accession'] == ref_file.split('-')[0]][
-                    'features'].values[0])
-            if not os.path.exists('data/final_results/'):
-                os.makedirs('data/final_results/', exist_ok=True)
+                reference_sequences[reference_sequences['accession'] == ref_file.split('-')[0]]['features'].values[0])
 
             # save a fasta file with the best alignment
-            final_alignment_file = f'data/final_results/best_alignment_{sequence_name}.fasta'
+            final_alignment_file = output_dir / f"best_alignment_{sequence_name}.fasta"
             with open(final_alignment_file, 'w') as output_file:
                 output_file.write(f">Reference {ref_file.split('.')[0]}\n{ref_aligned}\n")
                 output_file.write(f'>{sequence_name}\n{test_aligned}\n')
@@ -45,9 +50,10 @@ def HIMAPS(fastas_dir: str, subtyping: bool = True, splitting: bool = True, outp
 
             # save gene regions fasta in each present regions specific gene region folder
             for gene in present_regions:
-                if not os.path.exists(f'data/final_results/{gene}/'):
-                    os.makedirs(f'data/final_results/{gene}/', exist_ok=True)
-                with open(f'data/final_results/{gene}/{sequence_name}_{gene}.fasta', 'w') as output_file:
+                gene_path = output_dir / f"{gene}/"
+                gene_path.mkdir(parents=True, exist_ok=True)
+                gene_file = gene_path / f"{sequence_name}_{gene}.fasta"
+                with open(gene_file, 'w') as output_file:
                     output_file.write(
                         f'>{sequence_name}\n{test_aligned[gene_ranges[gene][0] - 1:gene_ranges[gene][1]]}\n')
                     # save the results in a final global table
@@ -60,4 +66,5 @@ def HIMAPS(fastas_dir: str, subtyping: bool = True, splitting: bool = True, outp
             final_table.loc[len(final_table)] = row
     if not splitting:
         final_table.drop(columns=['Most Matching Gene Region', 'Present Gene Regions'], inplace=True)
-    final_table.to_csv('data/final_results/final_table.tsv', sep='\t', index=False)
+    final_table_file = output_dir / 'final_table.tsv'
+    final_table.to_csv(final_table_file, sep='\t', index=False)
