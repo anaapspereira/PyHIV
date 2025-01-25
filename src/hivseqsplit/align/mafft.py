@@ -1,5 +1,5 @@
-import os
 import subprocess
+from pathlib import Path
 
 from Bio import SeqIO, AlignIO
 from Bio.SeqRecord import SeqRecord
@@ -7,8 +7,8 @@ from Bio.SeqRecord import SeqRecord
 
 # Align the test sequence with the reference sequence using MAFFT
 def mafft_align(test_seq, ref_seq):
-    temp_input_file = "temp_input.fasta"
-    temp_output_file = "temp_output.fasta"
+    temp_input_file = Path("temp_input.fasta")
+    temp_output_file = Path("temp_output.fasta")
     try:
         with open(temp_input_file, 'w') as temp_file:
             SeqIO.write([SeqRecord(ref_seq, id="ref_seq"), SeqRecord(test_seq, id="test_seq")], temp_file, "fasta")
@@ -35,7 +35,7 @@ def mafft_align(test_seq, ref_seq):
         print(f"Error in MAFFT alignment: {e}")
         return None, None
     finally:
-        if os.path.exists(temp_input_file):
-            os.remove(temp_input_file)
-        if os.path.exists(temp_output_file):
-            os.remove(temp_output_file)
+        if temp_input_file.exists():
+            temp_input_file.unlink()
+        if temp_output_file.exists():
+            temp_output_file.unlink()

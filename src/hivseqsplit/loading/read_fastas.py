@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 from typing import List, Tuple
 
 from Bio import SeqIO
@@ -27,11 +28,12 @@ def read_input_fastas(input_folder: str) -> List[Tuple[str, str]]:
         If a FASTA file cannot be parsed.
     """
     # TODO: handle logging properly
-    if not os.path.exists(input_folder):
-        raise FileNotFoundError(f"Input folder {input_folder} not found.")
+    input_folder = Path(input_folder)
+    if not input_folder.is_dir():
+        raise NotADirectoryError(f"Input folder {input_folder} is not a directory.")
 
     sequences = []
-    fasta_files = [file for file in os.listdir(input_folder) if file.endswith('.fasta')]
+    fasta_files = [file for file in input_folder.iterdir() if file.suffix == '.fasta']
     for file in fasta_files:
         file_path = os.path.join(input_folder, file)
         try:
