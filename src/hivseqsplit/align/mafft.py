@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+from uuid import uuid4
 
 from Bio import SeqIO, AlignIO
 from Bio.SeqRecord import SeqRecord
@@ -7,8 +8,8 @@ from Bio.SeqRecord import SeqRecord
 
 # Align the test sequence with the reference sequence using MAFFT
 def mafft_align(test_seq, ref_seq):
-    temp_input_file = Path("temp_input.fasta")
-    temp_output_file = Path("temp_output.fasta")
+    temp_input_file = Path(f"{uuid4().hex}_input.fasta")
+    temp_output_file = Path(f"{uuid4().hex}_output.fasta")
     try:
         with open(temp_input_file, 'w') as temp_file:
             SeqIO.write([SeqRecord(ref_seq, id="ref_seq"), SeqRecord(test_seq, id="test_seq")], temp_file, "fasta")

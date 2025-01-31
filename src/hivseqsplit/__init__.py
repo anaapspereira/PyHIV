@@ -13,7 +13,7 @@ from hivseqsplit.split import get_gene_region, get_present_gene_regions
 FINAL_TABLE_COLUMNS = ['Sequence', 'Reference', 'Subtype', 'Most Matching Gene Region', 'Present Gene Regions']
 
 
-def HIMAPS(fastas_dir: str, subtyping: bool = True, splitting: bool = True, output_dir: str = None):
+def HIMAPS(fastas_dir: str, subtyping: bool = True, splitting: bool = True, output_dir: str = None, n_jobs: int = None):
     fastas_dir = Path(fastas_dir)
     output_dir = Path(output_dir) or Path('HIMAPS_results/')
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -24,9 +24,9 @@ def HIMAPS(fastas_dir: str, subtyping: bool = True, splitting: bool = True, outp
     final_table = pd.DataFrame(columns=FINAL_TABLE_COLUMNS)
     for fasta in user_fastas:
         if subtyping:
-            best_alignment = align_with_references(fasta, references_dir=REFERENCE_GENOMES_FASTAS_DIR)
+            best_alignment = align_with_references(fasta, references_dir=REFERENCE_GENOMES_FASTAS_DIR, n_jobs=n_jobs)
         else:
-            best_alignment = align_with_references(fasta, references_dir=HXB2_GENOME_FASTA_DIR)
+            best_alignment = align_with_references(fasta, references_dir=HXB2_GENOME_FASTA_DIR, n_jobs=n_jobs)
         sequence_name = fasta.id
         if best_alignment is None:
             continue

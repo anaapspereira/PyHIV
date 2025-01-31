@@ -1,41 +1,100 @@
+import logging
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
+from typing import Optional, Tuple
+
 from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
 
 from hivseqsplit.align import mafft_align
 from hivseqsplit.loading import REFERENCE_GENOMES_FASTAS_DIR
 
 
-# Align testing sequence with sequences from references folder to find best alignment with MAFFT
-def align_with_references(test_sequence, references_dir=None):
-    if references_dir is None:
-        references_dir = REFERENCE_GENOMES_FASTAS_DIR
-    # Read the test sequence
-    try:
-        test_seq = test_sequence
-        # Initialize the best alignment score to a high value
-        best_score = -1
-        best_alignment = None
+def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple[int, str, str, str]]:
+    """
+    Aligns test sequence with a reference sequence and calculates the score.
 
-        # Iterate over each reference sequence
-        for ref_file in references_dir.iterdir():
-            ref_seq = SeqIO.read(ref_file, "fasta")
-            # Align the test sequence with the reference sequence
-            test_aligned, ref_aligned = mafft_align(test_seq.seq, ref_seq.seq)
-            # Calculate the alignment score
-            score = calculate_alignment_score(test_aligned, ref_aligned)
-            # Update the best alignment if the current score is better
-            if score > best_score:
-                best_score = score
-                best_alignment = (test_aligned, ref_aligned, ref_file.name)
-        return best_alignment
+    Parameters
+    ----------
+    test_seq: SeqRecord
+        A BioPython SeqRecord object representing the test sequence.
+    ref_seq: SeqRecord
+        A BioPython SeqRecord object representing the reference sequence.
+
+    Returns
+    -------
+    Tuple[int, str, str, str]
+        A tuple containing the alignment score, the aligned test sequence, the aligned reference sequence, and the reference sequence name.
+    """
+    try:
+        test_aligned, ref_aligned = mafft_align(test_seq.seq, ref_seq.seq)
+        score = calculate_alignment_score(test_aligned, ref_aligned)
+        return score, test_aligned, ref_aligned, ref_seq.name
     except Exception as e:
-        print(f"Error reading the test sequence file: {e}")
+        logging.error(f"Failed to process {ref_seq.name}: {e}")
         return None
 
+def align_with_references(test_sequence: SeqRecord,
+                          references_dir: Optional[Path] = None,
+                          n_jobs: int = None) -> Optional[Tuple[str, str, str]]:
+    """
+    Aligns a test sequence with reference sequences in parallel and returns the best match.
 
-# Calculate the alignment score between two sequences
+    Parameters
+    ----------
+    test_sequence: SeqRecord
+        A BioPython SeqRecord object representing the test sequence.
+    references_dir: Path, optional
+        Path to the directory containing reference sequences. Defaults to REFERENCE_GENOMES_FASTAS_DIR, containing
+        reference genomes for HIV-1 subtyping.
+    n_jobs: int, optional
+        Number of worker processes to use for parallel processing. Defaults to using all available CPU cores.
+
+    Returns
+    -------
+    Tuple[str, str, str]
+        A tuple containing the test sequence, reference sequence, and the reference file name with the best alignment.
+    """
+    num_workers = n_jobs or multiprocessing.cpu_count()
+    references_dir = references_dir or REFERENCE_GENOMES_FASTAS_DIR
+
+    if not isinstance(references_dir, Path) or not references_dir.exists():
+        logging.error("Invalid reference directory provided.")
+        return None
+
+    ref_files = list(references_dir.iterdir())  # Collect files first to avoid repeated I/O
+    ref_files = [SeqIO.read(f, "fasta") for f in ref_files]
+
+    best_alignment = None
+    best_score = float('-inf')
+
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        futures = {executor.submit(process_alignment, test_sequence, ref): ref for ref in ref_files}
+
+        for future in as_completed(futures):
+            result = future.result()
+            if result and result[0] > best_score:
+                best_score = result[0]
+                best_alignment = result[1:]
+
+    return best_alignment
+
+
 def calculate_alignment_score(seq1, seq2):
-    score = 0
-    for i in range(len(seq1)):
-        if seq1[i] == seq2[i]:
-            score += 1
-    return score
+    """
+    Calculate the alignment score between two sequences.
+
+    Parameters
+    ----------
+    seq1: str
+        First sequence to compare.
+    seq2: str
+        Second sequence to compare.
+
+    Returns
+    -------
+    int
+        Number of positions where the sequences are equal.
+    """
+    return sum(a == b for a, b in zip(seq1, seq2))
