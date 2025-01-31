@@ -58,7 +58,7 @@ def align_with_references(test_sequence: SeqRecord,
     Tuple[str, str, str]
         A tuple containing the test sequence, reference sequence, and the reference file name with the best alignment.
     """
-    num_workers = n_jobs or multiprocessing.cpu_count()
+    num_workers = n_jobs or 1
     references_dir = references_dir or REFERENCE_GENOMES_FASTAS_DIR
 
     if not isinstance(references_dir, Path) or not references_dir.exists():
