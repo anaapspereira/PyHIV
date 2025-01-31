@@ -10,4 +10,4 @@ class TestHIMAPS(TestCase):
     def test_himaps(self):
         fastas_dir = TEST_DIR / 'data' / 'fastas'
 
-        HIMAPS(fastas_dir=fastas_dir, subtyping=True, splitting=True, output_dir='HIMAPS_results/')
+        HIMAPS(fastas_dir=fastas_dir, subtyping=True, splitting=True, output_dir='HIMAPS_results/', n_jobs=8)
