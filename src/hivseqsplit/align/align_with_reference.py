@@ -1,8 +1,10 @@
+import itertools
 import logging
 import multiprocessing
+import operator
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -37,7 +39,7 @@ def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple
 
 def align_with_references(test_sequence: SeqRecord,
                           references_dir: Optional[Path] = None,
-                          n_jobs: int = None) -> Optional[Tuple[str, str, str]]:
+                          n_jobs: Optional[int] = None) -> Optional[Tuple[str, str, str]]:
     """
     Aligns a test sequence with reference sequences in parallel and returns the best match.
 
@@ -63,14 +65,23 @@ def align_with_references(test_sequence: SeqRecord,
         logging.error("Invalid reference directory provided.")
         return None
 
-    ref_files = list(references_dir.iterdir())  # Collect files first to avoid repeated I/O
-    ref_files = [SeqIO.read(f, "fasta") for f in ref_files]
+    # Load reference sequences efficiently
+    ref_sequences: List[SeqRecord] = []
+    for ref_file in references_dir.glob("*.fasta"):  # Only process FASTA files
+        try:
+            ref_sequences.extend(SeqIO.parse(ref_file, "fasta"))
+        except Exception as e:
+            logging.error(f"Error reading {ref_file}: {e}")
+
+    if not ref_sequences:
+        logging.error("No valid reference sequences found.")
+        return None
 
     best_alignment = None
     best_score = float('-inf')
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        futures = {executor.submit(process_alignment, test_sequence, ref): ref for ref in ref_files}
+        futures = {executor.submit(process_alignment, test_sequence, ref): ref for ref in ref_sequences}
 
         for future in as_completed(futures):
             result = future.result()
@@ -97,4 +108,8 @@ def calculate_alignment_score(seq1, seq2):
     int
         Number of positions where the sequences are equal.
     """
-    return sum(a == b for a, b in zip(seq1, seq2))
+    try:
+        return sum(itertools.starmap(operator.eq, zip(seq1, seq2, strict=True)))
+    except ValueError:
+        logging.error("Sequences have different lengths, alignment might be incorrect.")
+        return 0
