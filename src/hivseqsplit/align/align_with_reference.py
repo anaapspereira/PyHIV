@@ -10,6 +10,7 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
 from hivseqsplit.align import mafft_align
+from hivseqsplit.align import pyfamsa_align
 from hivseqsplit.loading import REFERENCE_GENOMES_FASTAS_DIR
 
 
@@ -30,7 +31,8 @@ def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple
         A tuple containing the alignment score, the aligned test sequence, the aligned reference sequence, and the reference sequence name.
     """
     try:
-        test_aligned, ref_aligned = mafft_align(test_seq.seq, ref_seq.seq)
+        #test_aligned, ref_aligned = mafft_align(test_seq.seq, ref_seq.seq)
+        test_aligned, ref_aligned = pyfamsa_align(test_seq, ref_seq)
         score = calculate_alignment_score(test_aligned, ref_aligned)
         return score, test_aligned, ref_aligned, ref_seq.name
     except Exception as e:
@@ -109,7 +111,8 @@ def calculate_alignment_score(seq1, seq2):
         Number of positions where the sequences are equal.
     """
     try:
-        return sum(itertools.starmap(operator.eq, zip(seq1, seq2, strict=True)))
+        return sum(1 for seq1_nt, seq2_nt in zip(seq1, seq2)
+               if seq1_nt.upper() == seq2_nt.upper() and seq1_nt != "-")
     except ValueError:
         logging.error("Sequences have different lengths, alignment might be incorrect.")
         return 0

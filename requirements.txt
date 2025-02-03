@@ -1,2 +1,3 @@
 pandas==2.2.3
 biopython==1.85
+pyfamsa==0.5.3
