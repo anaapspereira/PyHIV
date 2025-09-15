@@ -1,7 +1,4 @@
-import itertools
 import logging
-import multiprocessing
-import operator
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional, Tuple, List
@@ -92,7 +89,7 @@ def align_with_references(test_sequence: SeqRecord,
     return best_alignment
 
 
-def calculate_alignment_score(seq1, seq2):
+def calculate_alignment_score(seq1: str, seq2: str) -> int:
     """
     Calculate the alignment score between two sequences.
 
