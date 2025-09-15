@@ -31,7 +31,7 @@ def get_gene_region(test_aligned: str, ref_aligned: str, gene_ranges: dict) -> l
     return [gene for gene, score in gene_scores.items() if score == max_score] if max_score is not None else []
 
 
-def get_present_gene_regions(test_aligned, gene_ranges):
+def get_present_gene_regions(test_aligned: str, gene_ranges: dict) -> list:
     """
     Identify gene regions that contain actual base pair letters instead of gaps ('-').
 
