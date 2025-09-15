@@ -13,7 +13,11 @@ from hivseqsplit.split import get_gene_region, get_present_gene_regions
 FINAL_TABLE_COLUMNS = ['Sequence', 'Reference', 'Subtype', 'Most Matching Gene Region', 'Present Gene Regions']
 
 
-def HIMAPS(fastas_dir: str, subtyping: bool = True, splitting: bool = True, output_dir: str = None, n_jobs: int = None):
+def HIMAPS(fastas_dir: str,
+           subtyping: bool = True,
+           splitting: bool = True,
+           output_dir: str = None,
+           n_jobs: int = None) -> None:
     """
     Main function to run the HIMAPS pipeline. It aligns the user sequences with the reference sequences and saves the
     best alignment in a fasta file. If subtyping is True, it aligns the user sequences with the reference sequences
