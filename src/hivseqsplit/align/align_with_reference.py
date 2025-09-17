@@ -114,3 +114,4 @@ def calculate_alignment_score(seq1, seq2):
     except ValueError:
         logging.error("Sequences have different lengths, alignment might be incorrect.")
         return 0
+
