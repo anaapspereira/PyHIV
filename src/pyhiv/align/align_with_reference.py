@@ -1,7 +1,4 @@
-import itertools
 import logging
-import multiprocessing
-import operator
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional, Tuple, List
