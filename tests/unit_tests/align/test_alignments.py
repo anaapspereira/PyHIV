@@ -2,7 +2,7 @@ from unittest import TestCase, skip
 
 from Bio import SeqIO
 
-from hivseqsplit import align_with_references
+from pyhiv import align_with_references
 from tests import TEST_DIR
 
 
