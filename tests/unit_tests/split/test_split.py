@@ -1,9 +1,9 @@
 from unittest import TestCase, mock
 
-from pyhiv.split.split import get_gene_region, get_present_gene_regions
+from pyhiv.split.split import get_gene_region, get_present_gene_regions, map_ref_coords_to_alignment
 
 
-class TestGeneRegions(TestCase):
+class TestSplitting(TestCase):
 
     @mock.patch("pyhiv.align.calculate_alignment_score")
     def test_get_gene_region_empty_ranges(self, mock_score):
@@ -45,7 +45,7 @@ class TestGeneRegions(TestCase):
     def test_get_present_gene_regions_partial_bases(self):
         """Should return genes that have at least one base."""
         test_aligned = "A--G--"
-        gene_ranges = {"g1": (1, 3), "g2": (4, 6)}
+        gene_ranges = {"g1": (0, 2), "g2": (3, 5)}
         result = get_present_gene_regions(test_aligned, gene_ranges)
         self.assertEqual(result, ["g1", "g2"])
 
@@ -54,3 +54,26 @@ class TestGeneRegions(TestCase):
         test_aligned = "AAA"
         result = get_present_gene_regions(test_aligned, {})
         self.assertEqual(result, [])
+
+
+class TestMapRefCoordsToAlignment(TestCase):
+
+    def test_basic_mapping(self):
+        """Should correctly map reference coordinates ignoring gaps."""
+        ref_aligned = "A-CGT--A"
+        # Positions without gaps: A(1), C(2), G(3), T(4), A(5)
+        # Corresponding alignment indices (0-based): 0, 2, 3, 4, 7
+        expected = {1: 0, 2: 2, 3: 3, 4: 4, 5: 7}
+        result = map_ref_coords_to_alignment(ref_aligned)
+        self.assertEqual(result, expected)
+
+    def test_all_gaps(self):
+        """Should return empty dict when all positions are gaps."""
+        ref_aligned = "-----"
+        result = map_ref_coords_to_alignment(ref_aligned)
+        self.assertEqual(result, {})
+
+    def test_empty_input(self):
+        """Should handle empty input string gracefully."""
+        result = map_ref_coords_to_alignment("")
+        self.assertEqual(result, {})
