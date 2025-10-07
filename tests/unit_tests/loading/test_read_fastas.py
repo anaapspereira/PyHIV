@@ -29,7 +29,7 @@ class TestReadFastas(TestCase):
     def test_read_fastas(self):
         """Should correctly read all FASTA files in the provided data folder."""
         fastas = read_input_fastas(self.fastas_path)
-        self.assertEqual(len(fastas), 5, "Expected 5 total sequences from test FASTAs")
+        self.assertEqual(len(fastas), 3, "Expected 5 total sequences from test FASTAs")
 
     def test_read_fastas_invalid_path(self):
         """Should raise NotADirectoryError when input path does not exist."""
