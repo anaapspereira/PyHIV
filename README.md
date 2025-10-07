@@ -1,4 +1,4 @@
-# HIV Sequence Splitter
+# PyHIV: ...
 
 ### Description
 
@@ -18,7 +18,7 @@ The script aligns user sequences with each subtype and CRF references and slipts
 Install the package using pip:
 
 ```bash
-pip install hivseqsplitter
+pip install pyhiv
 ```
 
 ### Manually
@@ -28,13 +28,13 @@ Alternatively, you can clone the repository and install the package manually:
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/anaapspereira/HIVSeqSplit.git
+git clone https://github.com/anaapspereira/PyHIV.git
 ```
 
 2. Install the package:
 
 ```bash
-cd HIVSeqSplit
+cd PyHIV
 python setup.py install
 ```
 

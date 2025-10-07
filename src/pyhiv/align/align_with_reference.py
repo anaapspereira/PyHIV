@@ -9,8 +9,8 @@ from typing import Optional, Tuple, List
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
-from hivseqsplit.align import pyfamsa_align
-from hivseqsplit.loading import REFERENCE_GENOMES_FASTAS_DIR
+from pyhiv.align import pyfamsa_align
+from pyhiv.loading import REFERENCE_GENOMES_FASTAS_DIR
 
 
 def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple[int, str, str, str]]:

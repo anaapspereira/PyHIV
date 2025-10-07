@@ -1,4 +1,4 @@
-from hivseqsplit.align.align_with_reference import calculate_alignment_score
+from pyhiv.align.align_with_reference import calculate_alignment_score
 
 def map_ref_coords_to_alignment(ref_aligned: str) -> dict:
     """

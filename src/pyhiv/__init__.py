@@ -5,11 +5,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from hivseqsplit.align import align_with_references
-from hivseqsplit.loading import read_input_fastas, REFERENCE_GENOMES_DIR, REFERENCE_GENOMES_FASTAS_DIR, \
+from pyhiv.align import align_with_references
+from pyhiv.loading import read_input_fastas, REFERENCE_GENOMES_DIR, REFERENCE_GENOMES_FASTAS_DIR, \
     HXB2_GENOME_FASTA_DIR, SEQUENCES_WITH_LOCATION
-from hivseqsplit.split import get_gene_region, get_present_gene_regions
-from hivseqsplit.split.split import map_ref_coords_to_alignment
+from pyhiv.split import get_gene_region, get_present_gene_regions
 
 FINAL_TABLE_COLUMNS = ['Sequence', 'Reference', 'Subtype', 'Most Matching Gene Region', 'Present Gene Regions']
 

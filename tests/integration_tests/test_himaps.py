@@ -1,6 +1,6 @@
 from unittest import TestCase, skip
 
-from hivseqsplit import HIMAPS
+from pyhiv import HIMAPS
 from tests import TEST_DIR
 
 
