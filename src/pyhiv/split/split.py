@@ -1,4 +1,4 @@
-from hivseqsplit.align.align_with_reference import calculate_alignment_score
+from pyhiv.align.align_with_reference import calculate_alignment_score
 
 
 def get_gene_region(test_aligned: str, ref_aligned: str, gene_ranges: dict) -> list:

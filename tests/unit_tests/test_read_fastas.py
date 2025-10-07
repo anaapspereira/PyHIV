@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from hivseqsplit.loading import read_input_fastas
+from pyhiv.loading import read_input_fastas
 from tests import TEST_DIR
 
 
