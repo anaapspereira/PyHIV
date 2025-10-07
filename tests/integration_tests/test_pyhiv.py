@@ -1,13 +1,13 @@
 from unittest import TestCase, skip
 
-from pyhiv import HIMAPS
+from pyhiv import PyHIV
 from tests import TEST_DIR
 
 
 @skip('mafft not installed in actions!')
-class TestHIMAPS(TestCase):
+class TestPyHIV(TestCase):
 
-    def test_himaps(self):
+    def test_pyhiv(self):
         fastas_dir = TEST_DIR / 'data' / 'fastas'
 
-        HIMAPS(fastas_dir=fastas_dir, subtyping=True, splitting=True, output_dir='HIMAPS_results/', n_jobs=8)
+        PyHIV(fastas_dir=fastas_dir, subtyping=True, splitting=True, output_dir='PyHIV_results/', n_jobs=8)

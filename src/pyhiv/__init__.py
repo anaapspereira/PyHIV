@@ -13,9 +13,9 @@ from pyhiv.split import get_gene_region, get_present_gene_regions
 FINAL_TABLE_COLUMNS = ['Sequence', 'Reference', 'Subtype', 'Most Matching Gene Region', 'Present Gene Regions']
 
 
-def HIMAPS(fastas_dir: str, subtyping: bool = True, splitting: bool = True, output_dir: str = None, n_jobs: int = None):
+def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True, output_dir: str = None, n_jobs: int = None):
     """
-    Main function to run the HIMAPS pipeline. It aligns the user sequences with the reference sequences and saves the
+    Main function to run the PyHIV pipeline. It aligns the user sequences with the reference sequences and saves the
     best alignment in a fasta file. If subtyping is True, it aligns the user sequences with the reference sequences
     from the HIV-1 subtyping tool. If splitting is True, it splits the user sequences in gene regions and saves them in
     specific folders. It also saves a final table with the results.
@@ -34,7 +34,7 @@ def HIMAPS(fastas_dir: str, subtyping: bool = True, splitting: bool = True, outp
         Number of jobs to run in parallel
     """
     fastas_dir = Path(fastas_dir)
-    output_dir = Path(output_dir) if output_dir else Path('HIMAPS_results')
+    output_dir = Path(output_dir) if output_dir else Path('PyHIV_results')
     output_dir.mkdir(parents=True, exist_ok=True)
 
     user_fastas = read_input_fastas(fastas_dir)
