@@ -26,7 +26,7 @@ def pyfamsa_align(test_seq, ref_seq):
 
     sequences = [
         Sequence(ref_seq.id.encode(), str(ref_seq.seq).encode()),
-        Sequence(test_seq.id.encode(), str(test_seq.seq).encode())  # Fixed the typo here
+        Sequence(test_seq.id.encode(), str(test_seq.seq).encode())
     ]
     aligner = Aligner()
     alignment = aligner.align(sequences)

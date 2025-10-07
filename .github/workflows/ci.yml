@@ -2,7 +2,7 @@ name: Continuous Integration
 
 on:
   pull_request:
-    types: [synchronize, opened, reopened, edited]
+    types: [opened, synchronize, reopened]
     branches:
       - master
       - develop
@@ -18,20 +18,16 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        os:
-          - ubuntu-latest
-          #- windows-latest
-          #- macos-latest
-        python-version:
-          - 3.9
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -40,6 +36,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install tox tox-gh-actions
 
-      - name: Test with tox
-        run: |
-          tox
+      - name: Run tests with tox
+        run: tox
