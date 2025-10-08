@@ -1,7 +1,7 @@
 # 🧬 PyHIV: A Python Package for Local HIV‑1 Sequence Alignment, Subtyping and Gene Splitting
 
 ![CI](https://github.com/anaapspereira/PyHIV/actions/workflows/ci.yml/badge.svg)
-[![Coverage](https://img.shields.io/codecov/c/github/anaapspereira/PyHIV/main.svg)](https://codecov.io/gh/anaapspereira/PyHIV)
+[![codecov](https://codecov.io/gh/anaapspereira/PyHIV/branch/master/graph/badge.svg)](https://codecov.io/gh/anaapspereira/PyHIV)
 ![Python Version](https://img.shields.io/pypi/pyversions/PyHIV)
 
 
