@@ -16,7 +16,6 @@ def pyfamsa_align(test_seq, ref_seq):
     Returns
     -------
     tuple
-        A tuple containing:
         test_aligned : str
             The aligned test sequence.
         ref_aligned : str
