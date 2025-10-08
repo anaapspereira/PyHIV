@@ -1,7 +1,4 @@
-import itertools
 import logging
-import multiprocessing
-import operator
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional, Tuple, List
@@ -69,7 +66,8 @@ def align_with_references(test_sequence: SeqRecord,
     ref_sequences: List[SeqRecord] = []
     for ref_file in references_dir.glob("*.fasta"):  # Only process FASTA files
         try:
-            ref_sequences.extend(SeqIO.parse(ref_file, "fasta"))
+            with open(ref_file, "r") as handle:
+                ref_sequences.extend(list(SeqIO.parse(handle, "fasta")))
         except Exception as e:
             logging.error(f"Error reading {ref_file}: {e}")
 
