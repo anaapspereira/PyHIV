@@ -31,7 +31,8 @@ def read_input_fastas(input_folder: Path) -> List[SeqRecord]:
     sequences = []
     for fasta_file in input_folder.glob("*.fasta"):
         try:
-            records = list(SeqIO.parse(fasta_file, "fasta"))
+            with open(fasta_file, "r") as handle:
+                records = list(SeqIO.parse(handle, "fasta"))
             if not records:
                 logging.warning(f"File {fasta_file} contains no valid sequences.")
             sequences.extend(records)
