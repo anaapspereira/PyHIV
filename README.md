@@ -49,7 +49,7 @@ It produces:
 You can install PyHIV using pip:
 
 ```bash
-pip install pihiv-tools
+pip install pyhiv-tools
 ```
 
 Alternatively, you can clone the repository and install it manually:
