@@ -1,3 +1,5 @@
+# Introduction TEST
+
 # 🧬 PyHIV: A Python Package for Local HIV‑1 Sequence Alignment, Subtyping and Gene Splitting
 
 ![CI](https://github.com/anaapspereira/PyHIV/actions/workflows/ci.yml/badge.svg)
@@ -20,7 +22,7 @@ It produces:
 ---
 
 ## ⚙️ How It Works
-```pgsql
+```
 ┌─────────────────────────────────────────────┐
 │  User FASTA sequences                       │
 └─────────────────────────────────────────────┘
@@ -129,3 +131,4 @@ Manuscript in preparation. Please cite this repository if you use PyHIV in your 
 
 This project is licensed under the MIT License — see the LICENSE
  file for details.
+
