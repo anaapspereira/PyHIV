@@ -1,5 +1,11 @@
 # PyHIV: ...
 
+![CI](https://github.com/anaapspereira/PyHIV/actions/workflows/ci.yml/badge.svg)
+[![Coverage](https://img.shields.io/codecov/c/github/anaapspereira/PyHIV/main.svg)](https://codecov.io/gh/anaapspereira/PyHIV)
+![Python Version](https://img.shields.io/pypi/pyversions/PyHIV)
+
+
+
 ### Description
 
 The script aligns user sequences with each subtype and CRF references and slipts them in gene regions according to the best alignment. 
