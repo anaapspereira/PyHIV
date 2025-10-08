@@ -11,6 +11,7 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
+
     steps:
       # 1. Checkout the code
       - name: Checkout code
@@ -33,23 +34,13 @@ jobs:
           rm -rf dist
           python -m build --outdir dist
 
-      # 5. Upload distributions to the release
+      # 5. Create and publish GitHub release with distributions
       - name: Upload Python distributions
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
-          draft: false
+          draft: false         # Create as published (this triggers release.published)
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 6. Publish the release
-      - name: Publish Release
-        run: |
-          curl -X PATCH \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }} \
-            -d '{"draft": false}'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
