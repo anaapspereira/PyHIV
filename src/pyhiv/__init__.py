@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from pyhiv.align import align_with_references
+from pyhiv.config import validate_reference_paths
 from pyhiv.loading import read_input_fastas, REFERENCE_GENOMES_DIR, REFERENCE_GENOMES_FASTAS_DIR, \
     HXB2_GENOME_FASTA_DIR, SEQUENCES_WITH_LOCATION
 from pyhiv.split import get_gene_region, get_present_gene_regions, map_ref_coords_to_alignment
@@ -33,6 +34,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True, outpu
     n_jobs: int
         Number of jobs to run in parallel
     """
+    validate_reference_paths()
     fastas_dir = Path(fastas_dir)
     output_dir = Path(output_dir) if output_dir else Path('PyHIV_results')
     output_dir.mkdir(parents=True, exist_ok=True)
