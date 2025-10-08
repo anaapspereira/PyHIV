@@ -1,7 +1,7 @@
 # PyHIV: ...
 
 ![CI](https://github.com/anaapspereira/PyHIV/actions/workflows/ci.yml/badge.svg)
-[![Coverage](https://coverage-badge.samuelcolvin.workers.dev/redirect/anaapspereira/PyHIV)](https://github.com/anaapspereira/PyHIV)
+[![Coverage](https://img.shields.io/codecov/c/github/anaapspereira/PyHIV/main.svg)](https://codecov.io/gh/anaapspereira/PyHIV)
 
 ### Description
 
