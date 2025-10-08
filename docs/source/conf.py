@@ -5,13 +5,12 @@
 
 import os
 import sys
-
 sys.path.insert(0, os.path.abspath('../../src'))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'HIVSeqSplit'
+project = 'PyHIV'
 copyright = '2025, Ana Santos-Pereira; Joao Correia'
 author = 'Ana Santos-Pereira; Joao Correia'
 release = '0.0.1'
@@ -21,12 +20,10 @@ release = '0.0.1'
 
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
+    'sphinx.ext.napoleon',  # For Google/NumPy-style docstrings
+    'sphinx.ext.viewcode',
+    'myst_parser',          # Support for Markdown files
 ]
-napoleon_numpy_docstring = True
-napoleon_google_docstring = False
-
-master_doc = 'index'
 
 templates_path = ['_templates']
 exclude_patterns = []
@@ -36,8 +33,5 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
-
-autodoc_mock_imports = ["pandas", "Bio", "pyfamsa"]
-

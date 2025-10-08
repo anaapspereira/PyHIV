@@ -1,7 +1,7 @@
-hivseqsplit
-===========
+pyhiv
+=====
 
 .. toctree::
    :maxdepth: 4
 
-   hivseqsplit
+   pyhiv
