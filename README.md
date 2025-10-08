@@ -1,6 +1,6 @@
 # PyHIV: ...
 
-![CI](https://github.com/anaapspereira/PyHIV/actions/workflows/continuous-integration.yml/badge.svg)
+![CI](https://github.com/anaapspereira/PyHIV/actions/workflows/ci.yml/badge.svg)
 
 
 ### Description
