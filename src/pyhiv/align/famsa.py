@@ -8,19 +8,18 @@ def pyfamsa_align(test_seq, ref_seq):
     Parameters
     ----------
     test_seq : SeqRecord
-        The test sequence to align. Should be a Biopython SeqRecord object containing the
-        test sequence ID and sequence.
+        The test sequence to align. Should be a Biopython SeqRecord object containing the test sequence ID and sequence.
     ref_seq : SeqRecord
-        The reference sequence to align against. Should be a Biopython SeqRecord object containing
-        the reference sequence ID and sequence.
+        The reference sequence to align against. Should be a Biopython SeqRecord object containing the reference
+        sequence ID and sequence.
 
     Returns
     -------
-    tuple of str
+    tuple
         A tuple containing:
-        - test_aligned : str
+        test_aligned : str
             The aligned test sequence.
-        - ref_aligned : str
+        ref_aligned : str
             The aligned reference sequence.
     """
 
