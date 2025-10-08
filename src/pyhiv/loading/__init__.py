@@ -1,31 +1,18 @@
-import os
-from pathlib import Path
-
+from pyhiv.config import get_reference_paths, validate_reference_paths
 from .read_fastas import read_input_fastas
 
+paths = get_reference_paths()
 
-REFERENCE_GENOMES_DIR = Path(os.getenv('REFERENCE_GENOMES_DIR', str(Path(__file__).parent / 'reference_genomes')))
-REFERENCE_GENOMES_FASTAS_DIR = REFERENCE_GENOMES_DIR / 'reference_fastas'
-HXB2_GENOME_FASTA_DIR = REFERENCE_GENOMES_DIR / 'HXB2_fasta'
-SEQUENCES_WITH_LOCATION = REFERENCE_GENOMES_DIR / 'sequences_with_locations.tsv'
-
-def validate_reference_paths():
-    """Validate existence of reference genome directories and files."""
-    if not REFERENCE_GENOMES_DIR.exists():
-        raise FileNotFoundError(f"Directory not found: {REFERENCE_GENOMES_DIR}")
-    if not REFERENCE_GENOMES_FASTAS_DIR.exists():
-        raise FileNotFoundError(f"Directory not found: {REFERENCE_GENOMES_FASTAS_DIR}")
-    if not HXB2_GENOME_FASTA_DIR.exists():
-        raise FileNotFoundError(f"Directory not found: {HXB2_GENOME_FASTA_DIR}")
-    if not SEQUENCES_WITH_LOCATION.exists():
-        raise FileNotFoundError(f"File not found: {SEQUENCES_WITH_LOCATION}")
-
-validate_reference_paths()
+REFERENCE_GENOMES_DIR = paths["REFERENCE_GENOMES_DIR"]
+REFERENCE_GENOMES_FASTAS_DIR = paths["REFERENCE_GENOMES_FASTAS_DIR"]
+HXB2_GENOME_FASTA_DIR = paths["HXB2_GENOME_FASTA_DIR"]
+SEQUENCES_WITH_LOCATION = paths["SEQUENCES_WITH_LOCATION"]
 
 __all__ = [
-    'read_input_fastas',
-    'REFERENCE_GENOMES_DIR',
-    'REFERENCE_GENOMES_FASTAS_DIR',
-    'HXB2_GENOME_FASTA_DIR',
-    'SEQUENCES_WITH_LOCATION',
+    "read_input_fastas",
+    "REFERENCE_GENOMES_DIR",
+    "REFERENCE_GENOMES_FASTAS_DIR",
+    "HXB2_GENOME_FASTA_DIR",
+    "SEQUENCES_WITH_LOCATION",
+    "validate_reference_paths",
 ]
