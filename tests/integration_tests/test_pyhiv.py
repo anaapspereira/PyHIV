@@ -50,10 +50,7 @@ class TestPyHIV(TestCase):
         self.assertListEqual(list(table.columns), expected_cols)
         self.assertTrue(len(table) > 0)
 
-    @patch("pyhiv.loading.SEQUENCES_WITH_LOCATION", REFERENCE_BASE / "sequences_with_locations.tsv")
-    @patch("pyhiv.loading.HXB2_GENOME_FASTA_DIR", REFERENCE_BASE / "HXB2_fasta")
-    @patch("pyhiv.loading.REFERENCE_GENOMES_FASTAS_DIR", REFERENCE_BASE / "reference_fastas")
-    @patch("pyhiv.loading.REFERENCE_GENOMES_DIR", REFERENCE_BASE)
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
     def test_pyhiv_with_real_fastas_no_splitting(self):
         """Run PyHIV on real FASTAs with splitting disabled."""
         PyHIV(
