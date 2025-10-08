@@ -33,19 +33,7 @@ jobs:
           rm -rf dist
           python -m build --outdir dist
 
-      # 5. Create draft release
-      - name: Create GitHub Release (draft)
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          draft: true
-          prerelease: false
-
-      # 6. Upload distributions to the release
+      # 5. Upload distributions to the release
       - name: Upload Python distributions
         uses: softprops/action-gh-release@v2
         with:
@@ -53,7 +41,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 7. Publish the release
+      # 6. Publish the release
       - name: Publish Release
         run: |
           curl -X PATCH \
