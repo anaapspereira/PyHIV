@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest import TestCase
 import shutil
 from unittest.mock import patch
@@ -16,16 +17,15 @@ class TestPyHIV(TestCase):
     def setUp(self):
         """Prepare output directory for results."""
         self.output_dir = TEST_DIR / "output"
+        if self.output_dir.exists():
+            shutil.rmtree(self.output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def tearDown(self):
         """Clean up after tests."""
         shutil.rmtree(self.output_dir, ignore_errors=True)
 
-    @patch("pyhiv.loading.SEQUENCES_WITH_LOCATION", REFERENCE_BASE / "sequences_with_locations.tsv")
-    @patch("pyhiv.loading.HXB2_GENOME_FASTA_DIR", REFERENCE_BASE / "HXB2_fasta")
-    @patch("pyhiv.loading.REFERENCE_GENOMES_FASTAS_DIR", REFERENCE_BASE / "reference_fastas")
-    @patch("pyhiv.loading.REFERENCE_GENOMES_DIR", REFERENCE_BASE)
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
     def test_pyhiv_with_real_fastas_splitting(self):
         """Run PyHIV on real FASTAs with splitting enabled."""
         PyHIV(
@@ -67,3 +67,26 @@ class TestPyHIV(TestCase):
 
         # Columns specific to splitting should be dropped
         self.assertListEqual(list(table.columns), ['Sequence', 'Reference', 'Subtype'])
+
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    @patch("pyhiv.align_with_references", return_value=None)
+    def test_best_alignment_is_none(self, mock_align):
+        """Test that PyHIV handles cases when align_with_references returns None."""
+        # Run PyHIV on a real FASTA directory, alignment will always return None
+        PyHIV(
+            fastas_dir=str(DATA_DIR),
+            subtyping=True,
+            splitting=True,
+            output_dir=str(self.output_dir),
+            n_jobs=1
+        )
+
+        # The output directory should exist but no best_alignment files should be created
+        alignment_files = list(Path(self.output_dir).glob("best_alignment_*.fasta"))
+        self.assertEqual(len(alignment_files), 0)
+
+        # The final_table.tsv should still be created but empty (or just headers)
+        table_file = Path(self.output_dir) / "final_table.tsv"
+        self.assertTrue(table_file.exists())
+        table = pd.read_csv(table_file, sep='\t')
+        self.assertEqual(len(table), 0)  # No rows because no alignments succeeded
