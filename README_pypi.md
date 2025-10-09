@@ -16,7 +16,7 @@ It produces:
 Install directly from PyPI:
 
 ```bash
-pip install pyhiv
+pip install pyhiv-tools
 ```
 
 

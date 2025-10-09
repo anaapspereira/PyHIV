@@ -7,33 +7,40 @@ on:
 
 jobs:
   build:
-    name: Create Release
+    name: Create Release and Upload Python Distributions
     permissions:
       contents: write
     runs-on: ubuntu-latest
+
     steps:
+      # 1. Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 2. Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
+          python-version: "3.x"
 
-      - name: Build project
+      # 3. Install build tools
+      - name: Install build tools
         run: |
-          mkdir -p dist
-          echo "my-binary-content" > dist/my-binary.txt
+          python -m pip install --upgrade build setuptools wheel
 
-      - name: Upload binaries to release
+      # 4. Build the package
+      - name: Build Python package
+        run: |
+          rm -rf dist
+          python -m build --outdir dist
+
+      # 5. Create and publish GitHub release with distributions
+      - name: Upload Python distributions
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
+          draft: false         # Create as published (this triggers release.published)
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

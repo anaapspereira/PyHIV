@@ -1,9 +1,18 @@
-# 🧬 PyHIV: A Python Package for Local HIV‑1 Sequence Alignment, Subtyping and Gene Splitting
+<h1 align="center"> 🧬 PyHIV: A Python Package for Local HIV‑1 Sequence Alignment, Subtyping and Gene Splitting</h1>
+
+<p align="center">
 
 ![CI](https://github.com/anaapspereira/PyHIV/actions/workflows/ci.yml/badge.svg)
-[![Coverage](https://img.shields.io/codecov/c/github/anaapspereira/PyHIV/main.svg)](https://codecov.io/gh/anaapspereira/PyHIV)
-![Python Version](https://img.shields.io/pypi/pyversions/PyHIV)
+[![codecov](https://codecov.io/gh/anaapspereira/PyHIV/branch/main/graph/badge.svg)](https://codecov.io/gh/anaapspereira/PyHIV)
+![Python Version](https://img.shields.io/pypi/pyversions/pyhiv-tools)
+![OS Supported](https://img.shields.io/badge/OS-Windows%20%7C%20Linux%20%7C%20macOS-blue)
 
+![PyPI version](https://img.shields.io/pypi/v/pyhiv-tools)
+![Documentation Status](https://readthedocs.org/projects/pyhiv/badge/?version=latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![GitHub issues](https://img.shields.io/github/issues/anaapspereira/PyHIV)
+
+</p>
 
 ---
 
@@ -49,7 +58,7 @@ It produces:
 You can install PyHIV using pip:
 
 ```bash
-pip install pihiv
+pip install pyhiv-tools
 ```
 
 Alternatively, you can clone the repository and install it manually:
