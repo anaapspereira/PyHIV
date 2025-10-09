@@ -1,5 +1,3 @@
-# Introduction TEST
-
 # 🧬 PyHIV: A Python Package for Local HIV‑1 Sequence Alignment, Subtyping and Gene Splitting
 
 ![CI](https://github.com/anaapspereira/PyHIV/actions/workflows/ci.yml/badge.svg)
