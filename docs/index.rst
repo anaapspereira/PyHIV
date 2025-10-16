@@ -1,9 +1,9 @@
 .. PyHIV documentation master file, created by
-   sphinx-quickstart on Thu Oct 16 13:54:45 2025.
+   sphinx-quickstart on Thu Oct 16 15:57:16 2025.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-PyHIV Documentation
+PyHIV documentation
 ===================
 
 
@@ -15,3 +15,4 @@ PyHIV Documentation
    Command Line Interface <manual_docs/CLI>
 
    modules
+

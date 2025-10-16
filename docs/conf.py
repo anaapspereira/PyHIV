@@ -8,11 +8,15 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../src'))
+sys.path.insert(0, os.path.abspath('../src/'))
 
 project = 'PyHIV'
+copyright = '2025, Ana Santos-Pereira; Joao Correia'
 author = 'Ana Santos-Pereira; Joao Correia'
 release = '0.0.3'
+
+# -- General configuration ---------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
     'sphinx.ext.autodoc',

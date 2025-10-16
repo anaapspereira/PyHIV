@@ -1,5 +1,5 @@
-src
-===
+pyhiv
+=====
 
 .. toctree::
    :maxdepth: 4
