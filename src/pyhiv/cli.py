@@ -201,4 +201,4 @@ cli.add_command(main, name='run')
 cli.add_command(validate)
 
 if __name__ == '__main__':
-    main()
+    cli()
