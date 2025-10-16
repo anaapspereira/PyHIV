@@ -1,6 +1,11 @@
 pyhiv package
 =============
 
+.. automodule:: pyhiv
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Subpackages
 -----------
 
@@ -14,26 +19,8 @@ Subpackages
 Submodules
 ----------
 
-pyhiv.cli module
-----------------
+.. toctree::
+   :maxdepth: 4
 
-.. automodule:: pyhiv.cli
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pyhiv.config module
--------------------
-
-.. automodule:: pyhiv.config
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: pyhiv
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   pyhiv.cli
+   pyhiv.config
