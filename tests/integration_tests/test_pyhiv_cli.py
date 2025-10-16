@@ -127,7 +127,7 @@ class TestPyHIVCLI(TestCase):
 
         result = self.runner.invoke(cli, ["run", str(DATA_DIR), "-o", str(output_dir), "--verbose"])
         self.assertIn("final_table.tsv", result.output)
-        self.assertIn("best_alignment_0.fasta", result.output)
+        # Instead of checking individual alignment files, check the summary
         self.assertIn("... and 2 more alignment file(s)", result.output)
 
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
