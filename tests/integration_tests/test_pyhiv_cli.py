@@ -109,7 +109,7 @@ class TestPyHIVCLI(TestCase):
         assert "must be at least 1" in str(exc.value)
 
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
-    @patch("pyhiv.PyHIV")  # <-- patch pyhiv.PyHIV, NOT pyhiv.cli.PyHIV
+    @patch("pyhiv.PyHIV")
     def test_run_cli_output_dir_exists_warning(self, mock_pyhiv):
         existing_dir = TEST_DIR / "existing_dir"
         existing_dir.mkdir(exist_ok=True)
