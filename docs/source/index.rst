@@ -12,5 +12,6 @@ PyHIV documentation
 
    Introduction <manual_docs/introduction>
 
-   modules
+   Command Line Interface <manual_docs/cli>
 
+   modules
