@@ -19,7 +19,7 @@ def validate_n_jobs(ctx, param, value):
 
 def count_fasta_files(directory):
     """Count FASTA files in the input directory."""
-    return sum(1 for f in Path(directory).rglob('*') if f.suffix.lower() in SUPPORTED_FASTA_EXTENSIONS)
+    return sum(1 for f in Path(directory).rglob('*.[fF][aA]*') if f.suffix.lower() in SUPPORTED_FASTA_EXTENSIONS)
 
 
 @click.command()
