@@ -11,7 +11,7 @@ from pyhiv.loading import REFERENCE_GENOMES_FASTAS_DIR
 try:
     from Bio import SeqIO
     from Bio.SeqRecord import SeqRecord
-except ImportError:
+except ImportError: # pragma: no cover
     raise ImportError("BioPython is required for this module. Please install it via 'pip install biopython'.")
 
 def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple[int, str, str, str]]:
