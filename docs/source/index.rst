@@ -14,7 +14,4 @@ PyHIV Documentation
    Introduction <manual_docs/PyHIV>
    Command Line Interface <manual_docs/CLI>
 
-   pyhiv
-   pyhiv.align
-   pyhiv.loading
-   pyhiv.split
+   modules
