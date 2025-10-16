@@ -13,7 +13,7 @@ pip install pyhiv-tools
 Or install from source:
 
 ```bash
-git clone https://github.com/yourusername/pyhiv.git
+git clone https://github.com/anaapspereira/pyhiv.git
 cd pyhiv
 pip install -e .
 ```
