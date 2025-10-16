@@ -7,7 +7,7 @@ A comprehensive command-line interface for HIV-1 sequence alignment, subtyping, 
 Install PyHIV using pip:
 
 ```bash
-pip install pyhiv
+pip install pyhiv-tools
 ```
 
 Or install from source:
