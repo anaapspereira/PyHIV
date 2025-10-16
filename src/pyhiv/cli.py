@@ -183,7 +183,10 @@ def validate(fastas_dir):
 
     # List files if not too many
     if num_files <= 10:
-        files = [f for f in Path(fastas_dir).rglob('*') if f.suffix.lower() in SUPPORTED_FASTA_EXTENSIONS]
+        files = []
+        for ext in SUPPORTED_FASTA_EXTENSIONS:
+            files.extend(Path(fastas_dir).rglob(f'*{ext}'))
+        files = list({f.resolve(): f for f in files}.values())  # Remove duplicates, preserve Path objects
         click.echo("\nFiles:")
         for f in files:
             click.echo(f"  • {f.name}")
