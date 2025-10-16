@@ -338,7 +338,7 @@ MemoryError: Unable to allocate array
 Error: Could not import PyHIV module
 ```
 - Verify installation: `pip list | grep pyhiv-tools`
-- Reinstall: `pip install --force-reinstall pyhiv`
+- Reinstall: `pip install --force-reinstall pyhiv-tools`
 - Check Python version compatibility
 
 ### Debug Mode
