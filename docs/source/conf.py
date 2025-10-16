@@ -41,6 +41,7 @@ autodoc_mock_imports = [
     'pyfamsa',
     'pandas',
     'Bio',
+    'Bio.SeqRecord',
     'click',
 ]
 

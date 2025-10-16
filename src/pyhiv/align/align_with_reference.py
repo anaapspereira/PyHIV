@@ -1,16 +1,15 @@
+from __future__ import annotations
+
 import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional, Tuple, List
 
-from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
-
 from .famsa import pyfamsa_align
 from pyhiv.loading import REFERENCE_GENOMES_FASTAS_DIR
 
 
-def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple[int, str, str, str]]:
+def process_alignment(test_seq: "SeqRecord", ref_seq: "SeqRecord") -> Optional[Tuple[int, str, str, str]]:
     """
     Aligns test sequence with a reference sequence and calculates the score.
 
@@ -27,6 +26,8 @@ def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple
         A tuple containing the alignment score, the aligned test sequence, the aligned reference sequence, and the reference sequence name.
     """
     try:
+        # Import here to avoid hard dependency at module import time (helps Sphinx autodoc)
+        from Bio.SeqRecord import SeqRecord  # noqa: F401  (type check / annotations)
         test_aligned, ref_aligned = pyfamsa_align(test_seq, ref_seq)
         score = calculate_alignment_score(test_aligned, ref_aligned)
         return score, test_aligned, ref_aligned, ref_seq.name
@@ -34,7 +35,7 @@ def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple
         logging.error(f"Failed to process {ref_seq.name}: {e}")
         return None
 
-def align_with_references(test_sequence: SeqRecord,
+def align_with_references(test_sequence: "SeqRecord",
                           references_dir: Optional[Path] = None,
                           n_jobs: Optional[int] = None) -> Optional[Tuple[str, str, str]]:
     """
@@ -66,6 +67,8 @@ def align_with_references(test_sequence: SeqRecord,
     ref_sequences: List[SeqRecord] = []
     for ref_file in references_dir.glob("*.fasta"):  # Only process FASTA files
         try:
+            # Import here to avoid hard dependency at module import time
+            from Bio import SeqIO
             with open(ref_file, "r") as handle:
                 ref_sequences.extend(list(SeqIO.parse(handle, "fasta")))
         except Exception as e:
