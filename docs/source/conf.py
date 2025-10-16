@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath('../../src'))
 project = 'PyHIV'
 copyright = '2025, Ana Santos-Pereira; Joao Correia'
 author = 'Ana Santos-Pereira; Joao Correia'
-release = '0.0.1'
+release = '0.0.3'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -24,6 +24,14 @@ extensions = [
     'sphinx.ext.viewcode',
     'myst_parser',          # Support for Markdown files
 ]
+
+# -- Autodoc settings --------------------------------------------------------
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'show-inheritance': True,
+}
+autodoc_typehints = "description"
 
 templates_path = ['_templates']
 exclude_patterns = []
