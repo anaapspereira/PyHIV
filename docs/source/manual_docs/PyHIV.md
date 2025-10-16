@@ -1,9 +1,14 @@
 # 🧬 PyHIV: A Python Package for Local HIV‑1 Sequence Alignment, Subtyping and Gene Splitting
 
 ![CI](https://github.com/anaapspereira/PyHIV/actions/workflows/ci.yml/badge.svg)
-[![Coverage](https://img.shields.io/codecov/c/github/anaapspereira/PyHIV/main.svg)](https://codecov.io/gh/anaapspereira/PyHIV)
-![Python Version](https://img.shields.io/pypi/pyversions/PyHIV)
+[![codecov](https://codecov.io/gh/anaapspereira/PyHIV/branch/main/graph/badge.svg)](https://codecov.io/gh/anaapspereira/PyHIV)
+![Python Version](https://img.shields.io/pypi/pyversions/pyhiv-tools)
+![OS Supported](https://img.shields.io/badge/OS-Windows%20%7C%20Linux%20%7C%20macOS-blue)
 
+![PyPI version](https://img.shields.io/pypi/v/pyhiv-tools)
+![Documentation Status](https://readthedocs.org/projects/pyhiv/badge/?version=latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![GitHub issues](https://img.shields.io/github/issues/anaapspereira/PyHIV)
 
 ---
 
@@ -49,7 +54,7 @@ It produces:
 You can install PyHIV using pip:
 
 ```bash
-pip install pyhiv
+pip install pyhiv-tools
 ```
 
 Alternatively, you can clone the repository and install it manually:
@@ -119,6 +124,75 @@ PyHIV_results/
 
 ---
 
+## 📟 Command Line Interface
+
+PyHIV provides a user-friendly CLI for HIV-1 sequence analysis.
+
+### 🚀 Getting Started
+
+```bash
+# Basic usage
+pyhiv run sequences/
+
+# With custom options
+pyhiv run sequences/ -o results/ -j 4 -v
+
+# Validate inputs first
+pyhiv validate sequences/
+```
+
+### ⚙️ Main Options
+
+| Option | Description |
+|--------|-------------|
+| `--subtyping` / `--no-subtyping` | Enable/disable HIV-1 subtyping (default: enabled) |
+| `--splitting` / `--no-splitting` | Enable/disable gene region splitting (default: enabled) |
+| `-o`, `--output-dir PATH` | Output directory (default: `PyHIV_results`) |
+| `-j`, `--n-jobs INTEGER` | Number of parallel jobs (default: all CPUs) |
+| `-v`, `--verbose` | Detailed output |
+| `-q`, `--quiet` | Suppress non-error output |
+
+### 💼 Common Use Cases
+
+**Full analysis with subtyping and splitting:**
+```bash
+pyhiv run data/sequences/
+```
+
+**Alignment only:**
+```bash
+pyhiv run data/sequences/ --no-subtyping --no-splitting
+```
+
+**Parallel processing:**
+```bash
+pyhiv run data/sequences/ -j 8 -o results/batch1/
+```
+
+**Validation:**
+```bash
+pyhiv validate data/sequences/
+```
+
+### 📤 Output
+
+PyHIV generates:
+- `final_table.tsv` - Summary with sequence IDs, references, subtypes, and gene regions
+- `best_alignment_*.fasta` - Best alignment for each sequence
+- Gene-specific folders (when `--splitting` is enabled) with extracted regions
+
+### 🆘 Getting Help
+
+```bash
+pyhiv --help           # Show all commands
+pyhiv run --help       # Show options for run command
+pyhiv --version        # Show version
+```
+
+For comprehensive documentation, see [CLI_README.md](CLI.md).
+
+---
+
 ## 🗂️ Citation
 
 Manuscript in preparation. Please cite this repository if you use PyHIV in your research.
@@ -129,4 +203,3 @@ Manuscript in preparation. Please cite this repository if you use PyHIV in your 
 
 This project is licensed under the MIT License — see the LICENSE
  file for details.
-

@@ -7,13 +7,13 @@ A comprehensive command-line interface for HIV-1 sequence alignment, subtyping, 
 Install PyHIV using pip:
 
 ```bash
-pip install pyhiv
+pip install pyhiv-tools
 ```
 
 Or install from source:
 
 ```bash
-git clone https://github.com/yourusername/pyhiv.git
+git clone https://github.com/anaapspereira/pyhiv.git
 cd pyhiv
 pip install -e .
 ```
@@ -337,8 +337,8 @@ MemoryError: Unable to allocate array
 ```
 Error: Could not import PyHIV module
 ```
-- Verify installation: `pip list | grep pyhiv`
-- Reinstall: `pip install --force-reinstall pyhiv`
+- Verify installation: `pip list | grep pyhiv-tools`
+- Reinstall: `pip install --force-reinstall pyhiv-tools`
 - Check Python version compatibility
 
 ### Debug Mode
