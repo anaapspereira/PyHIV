@@ -38,7 +38,7 @@ autodoc_default_options = {
 autodoc_typehints = "description"
 
 # Autosummary settings
-autosummary_generate = True
+autosummary_generate = False
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
