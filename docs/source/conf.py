@@ -36,9 +36,16 @@ autodoc_default_options = {
     'show-inheritance': True,
 }
 autodoc_typehints = "description"
+autodoc_mock_imports = [
+    # Mock heavy/optional deps so imports succeed on RTD
+    'pyfamsa',
+    'pandas',
+    'Bio',
+    'click',
+]
 
 # Autosummary settings
-autosummary_generate = False
+autosummary_generate = True
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
