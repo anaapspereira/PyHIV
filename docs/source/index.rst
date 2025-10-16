@@ -10,8 +10,8 @@ PyHIV documentation
    :maxdepth: 2
    :caption: Contents:
 
-   Introduction <manual_docs/introduction>
+   Introduction <manual_docs/PyHIV>
 
-   Command Line Interface <manual_docs/cli>
+   Command Line Interface <manual_docs/CLI>
 
    modules
