@@ -17,7 +17,7 @@ def validate_n_jobs(ctx, param, value):
 
 def count_fasta_files(directory):
     """Count FASTA files in the input directory."""
-    fasta_extensions = {'.fasta', '.fa', '.fna', '.ffn', '.faa', '.frn'}
+    fasta_extensions = {'.fasta', '.fa', '.fna', '.ffn'}
     return sum(1 for f in Path(directory).rglob('*') if f.suffix.lower() in fasta_extensions)
 
 
@@ -182,7 +182,7 @@ def validate(fastas_dir):
 
     # List files if not too many
     if num_files <= 10:
-        fasta_extensions = {'.fasta', '.fa', '.fna', '.ffn', '.faa', '.frn'}
+        fasta_extensions = {'.fasta', '.fa', '.fna', '.ffn'}
         files = [f for f in Path(fastas_dir).rglob('*') if f.suffix.lower() in fasta_extensions]
         click.echo("\nFiles:")
         for f in files:
