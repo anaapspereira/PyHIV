@@ -1,14 +1,18 @@
+from __future__ import annotations
+
 import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional, Tuple, List
 
-from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
-
-from pyhiv.align import pyfamsa_align
+from pyhiv.align.famsa import pyfamsa_align
 from pyhiv.loading import REFERENCE_GENOMES_FASTAS_DIR
 
+try:
+    from Bio import SeqIO
+    from Bio.SeqRecord import SeqRecord
+except ImportError: # pragma: no cover
+    raise ImportError("BioPython is required for this module. Please install it via 'pip install biopython'.")
 
 def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple[int, str, str, str]]:
     """
@@ -112,4 +116,3 @@ def calculate_alignment_score(seq1: str, seq2: str) -> int:
     except ValueError:
         logging.error("Sequences have different lengths, alignment might be incorrect.")
         return 0
-
