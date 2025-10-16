@@ -1,4 +1,4 @@
-<h1 align="center"> 🧬 PyHIV: A Python Package for Local HIV‑1 Sequence Alignment, Subtyping and Gene Splitting</h1>
+# <h1 align="center"> 🧬 PyHIV: A Python Package for Local HIV‑1 Sequence Alignment, Subtyping and Gene Splitting</h1>
 
 <p align="center">
 
