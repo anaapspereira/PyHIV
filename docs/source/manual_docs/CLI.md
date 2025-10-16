@@ -246,7 +246,7 @@ Summary table with columns:
 | Present Gene Regions | All detected gene regions |
 
 **Example:**
-```tsv
+```
 Sequence    Reference    Subtype    Most Matching Gene Region    Present Gene Regions
 seq001      K03455       B          pol                          gag, pol, env
 seq002      AF004885     C          env                          pol, env
