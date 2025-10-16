@@ -7,6 +7,8 @@ import sys
 import time
 from pyhiv import __version__
 
+SUPPORTED_FASTA_EXTENSIONS = {'.fasta', '.fa', '.fna', '.ffn'}
+
 
 def validate_n_jobs(ctx, param, value):
     """Validate that n_jobs is positive if provided."""
@@ -17,8 +19,7 @@ def validate_n_jobs(ctx, param, value):
 
 def count_fasta_files(directory):
     """Count FASTA files in the input directory."""
-    fasta_extensions = {'.fasta', '.fa', '.fna', '.ffn'}
-    return sum(1 for f in Path(directory).rglob('*') if f.suffix.lower() in fasta_extensions)
+    return sum(1 for f in Path(directory).rglob('*') if f.suffix.lower() in SUPPORTED_FASTA_EXTENSIONS)
 
 
 @click.command()
@@ -182,8 +183,7 @@ def validate(fastas_dir):
 
     # List files if not too many
     if num_files <= 10:
-        fasta_extensions = {'.fasta', '.fa', '.fna', '.ffn'}
-        files = [f for f in Path(fastas_dir).rglob('*') if f.suffix.lower() in fasta_extensions]
+        files = [f for f in Path(fastas_dir).rglob('*') if f.suffix.lower() in SUPPORTED_FASTA_EXTENSIONS]
         click.echo("\nFiles:")
         for f in files:
             click.echo(f"  • {f.name}")
