@@ -6,7 +6,7 @@ from typing import Optional, Tuple, List
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
-from pyhiv.align import pyfamsa_align
+from .famsa import pyfamsa_align
 from pyhiv.loading import REFERENCE_GENOMES_FASTAS_DIR
 
 
