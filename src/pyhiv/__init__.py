@@ -8,12 +8,18 @@ from pyhiv.align import align_with_references
 from pyhiv.config import get_reference_paths, validate_reference_paths
 from pyhiv.loading import read_input_fastas
 from pyhiv.split import get_gene_region, get_present_gene_regions, map_ref_coords_to_alignment
+from pyhiv.report import PyHIVReporter
+import logging
 
 FINAL_TABLE_COLUMNS = ['Sequence', 'Reference', 'Subtype', 'Most Matching Gene Region', 'Present Gene Regions']
 
+logging.basicConfig(
+    level=logging.INFO,  # or DEBUG for more verbosity
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
 
 def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
-          output_dir: str = None, n_jobs: int = None):
+          output_dir: str = None, n_jobs: int = None, reporting: bool = True):
     """
     Main function to run the PyHIV pipeline.
     It aligns the user sequences with the reference sequences and saves the
@@ -21,6 +27,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     sequences with the reference sequences from the HIV-1 subtyping tool.
     If splitting is True, it splits the user sequences into gene regions
     and saves them in specific folders. It also saves a final table with the results.
+    If reporting is True, it generates a PDF report with visualizations.
     """
     paths = get_reference_paths()
     validate_reference_paths(paths)
@@ -107,3 +114,17 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
         final_table.drop(columns=['Most Matching Gene Region', 'Present Gene Regions'], inplace=True)
 
     final_table.to_csv(output_dir / 'final_table.tsv', sep='\t', index=False)
+    
+    # Generate PDF report if requested
+    if reporting:
+        try:
+            reporter = PyHIVReporter(output_dir)
+            sequences_with_locations_path = paths["SEQUENCES_WITH_LOCATION"]
+            pdf_path = reporter.generate_report(
+                final_table_path=output_dir / 'final_table.tsv',
+                sequences_with_locations_path=sequences_with_locations_path,
+                output_pdf_name="PyHIV_report_all_sequences.pdf"
+            )
+            logging.info(f"PDF report generated: {pdf_path}")
+        except Exception as e: # pragma: no cover
+            logging.exception("Error generating PDF report — continuing without it.")
