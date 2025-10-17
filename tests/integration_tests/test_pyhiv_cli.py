@@ -48,7 +48,8 @@ class TestPyHIVCLI(TestCase):
                 "--no-splitting",
                 "-o", str(self.output_dir),
                 "-j", "2",
-                "--verbose"
+                "--verbose",
+                "--reporting"
             ]
         )
 
@@ -58,7 +59,8 @@ class TestPyHIVCLI(TestCase):
             subtyping=False,
             splitting=False,
             output_dir=str(self.output_dir),
-            n_jobs=2
+            n_jobs=2,
+            reporting=True
         )
         self.assertIn(f"PyHIV v{__version__}", result.output)
 
@@ -169,4 +171,3 @@ class TestPyHIVCLI(TestCase):
         # The traceback should appear in output
         self.assertIn("Traceback (most recent call last):", result.output)
         self.assertIn("Exception: mocked exception", result.output)
-
