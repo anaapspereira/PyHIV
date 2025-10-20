@@ -17,7 +17,7 @@ from .utils import (
     build_ref_to_alignment_map, project_features_to_alignment,
     get_numeric_offsets_non_special, build_alignment_path
 )
-from .visualization import plot_gene_axes, _assign_lanes_nonoverlap
+from .visualization import plot_gene_axes
 from .pdf_generator import render_sequence_page
 
 __all__ = [
@@ -32,6 +32,5 @@ __all__ = [
     "build_ref_to_alignment_map", "project_features_to_alignment",
     "get_numeric_offsets_non_special", "build_alignment_path",
     # Viz + rendering
-    "plot_gene_axes", "_assign_lanes_nonoverlap",
-    "render_sequence_page",
+    "plot_gene_axes", "render_sequence_page",
 ]
