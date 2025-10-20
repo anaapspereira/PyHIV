@@ -8,7 +8,7 @@ import logging
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 
-from pyhiv.report import render_sequence_page
+from .pdf_generator import render_sequence_page
 from pyhiv.report.constants import K03455Config
 from pyhiv.report.utils import (
     read_alignment_fasta, parse_present_regions, parse_features,
