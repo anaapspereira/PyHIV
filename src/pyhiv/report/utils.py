@@ -9,6 +9,8 @@ from typing import Dict, List, Tuple, Optional
 
 import pandas as pd
 
+from .constants import NumericOffsets
+
 
 def ungap(seq: str) -> str:
     """Remove gaps from sequence."""
@@ -182,20 +184,9 @@ def project_features_to_alignment(features_genomic: Dict[str, Tuple[int, int]], 
     return projected
 
 
-def get_numeric_offsets_non_special(gene: str) -> Tuple[float, float]:
-    """Get numeric offsets for non-K03455 references."""
-    from .constants import NumericOffsets
-    
-    if not gene:
-        return NumericOffsets.DEFAULT_OFFSETS
-    key = gene.strip().lower()
-    if key in NumericOffsets.GENE_OFFSET_MAP:
-        return NumericOffsets.GENE_OFFSET_MAP[key]
-    if key.startswith("tat"):
-        return NumericOffsets.GENE_OFFSET_MAP.get("tat 1", NumericOffsets.DEFAULT_OFFSETS)
-    if key.startswith("rev"):
-        return NumericOffsets.GENE_OFFSET_MAP.get("rev 1", NumericOffsets.DEFAULT_OFFSETS)
-    return NumericOffsets.DEFAULT_OFFSETS
+def get_numeric_offsets_non_special(gene: str) -> tuple[float, float]:
+    """Get numeric offsets for non-K03455 references using NumericOffsets."""
+    return NumericOffsets.get_offsets(gene)
 
 
 def build_alignment_path(sequence: str, alignments_dir: Path) -> Path:

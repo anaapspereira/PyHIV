@@ -11,7 +11,7 @@ from pyhiv.report.utils import (
     is_special_reference,
     get_numeric_offsets_non_special,
 )
-from pyhiv.report.constants import NumericOffsets
+from pyhiv.report.constants import NumericOffsets, K03455Config
 
 
 class TestReportingUtils(TestCase):
@@ -66,4 +66,29 @@ class TestReportingUtils(TestCase):
         self.assertEqual(
             get_numeric_offsets_non_special("unknown"),
             NumericOffsets.DEFAULT_OFFSETS,
+        )
+
+        self.assertEqual(
+            get_numeric_offsets_non_special(None),
+            NumericOffsets.DEFAULT_OFFSETS,
+        )
+
+
+
+    def test_get_k03455_offsets(self):
+        """Ensure K03455Config.get_k03455_offsets returns correct offsets or default."""
+        # Known gene
+        self.assertEqual(
+            K03455Config.get_k03455_offsets("tat 1"),
+            K03455Config.K03455_NUMERIC_OFFSETS["tat 1"],
+        )
+        # Another known gene
+        self.assertEqual(
+            K03455Config.get_k03455_offsets("vpu"),
+            K03455Config.K03455_NUMERIC_OFFSETS["vpu"],
+        )
+        # Unknown gene → default
+        self.assertEqual(
+            K03455Config.get_k03455_offsets("foo"),
+            K03455Config.DEFAULT_K03455_OFFSETS,
         )
