@@ -73,7 +73,7 @@ def read_alignment_fasta(fpath: Path) -> Tuple[str, str, str, str]:
         raise FileNotFoundError(f"Alignment FASTA not found: {fpath}")
 
     headers, seqs, cur, cur_header = [], [], [], None
-    with open(fpath, "r") as fh:
+    with open(fpath, "r", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if not line:
