@@ -13,11 +13,6 @@ import logging
 
 FINAL_TABLE_COLUMNS = ['Sequence', 'Reference', 'Subtype', 'Most Matching Gene Region', 'Present Gene Regions']
 
-logging.basicConfig(
-    level=logging.INFO,  # or DEBUG for more verbosity
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-
 def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
           output_dir: str = None, n_jobs: int = None, reporting: bool = True):
     """

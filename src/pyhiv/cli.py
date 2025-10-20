@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import time
 from pyhiv import __version__
+import logging
 
 SUPPORTED_FASTA_EXTENSIONS = {'.fasta', '.fa', '.fna', '.ffn'}
 
@@ -97,6 +98,20 @@ def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet, r
     # Handle conflicting flags
     if verbose and quiet:
         raise click.UsageError("Cannot use --verbose and --quiet together")
+
+    # Configure logging based on flags
+    if quiet:
+        logging_level = logging.ERROR
+    elif verbose:
+        logging_level = logging.DEBUG
+    else:
+        logging_level = logging.INFO
+
+    logging.basicConfig(
+        level=logging_level,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
     # Set output directory
     output_path = output_dir or Path('PyHIV_results')
