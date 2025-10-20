@@ -7,33 +7,33 @@ Constants and configuration for PyHIV reporting module.
 # ================================
 class PageLayout:
     """Page layout and spacing configuration."""
-    FIGSIZE = (11.69, 9.2)            # wider/taller than A4 landscape height
-    GRID_HEIGHT_RATIOS = [0.9, 1.9]   # top row (metadata), bottom row (panel)
-    HSPACE = 0.42                      # vertical spacing between rows
+    FIGSIZE = (11.69, 9.2)
+    GRID_HEIGHT_RATIOS = [0.9, 1.9]
+    HSPACE = 0.42
 
 # ================================
 # METADATA BLOCK CONFIGURATION
 # ================================
 class MetadataConfig:
     """Metadata block display configuration."""
-    WRAP = 75                     # characters per line; lower = more wrapping
+    WRAP = 75
     FONTSIZE = 9.5
-    TITLE_Y = 1.06                # title y-position (axes coords)
-    INFO_TOP_Y = 0.78             # metadata block start y-position
+    TITLE_Y = 1.06
+    INFO_TOP_Y = 0.78
 
 # ================================
 # GENE PANEL CONFIGURATION
 # ================================
 class GenePanelConfig:
     """Gene panel spacing and positioning configuration."""
-    Y_SCALE = 1.35                     # multiplies all y positions
+    Y_SCALE = 1.35
     TAT_CONNECTOR = 0.07 * Y_SCALE
     REV_CONNECTOR = 0.45 * Y_SCALE
     ALIGNMENT_CLEARANCE = 0.18 * Y_SCALE
-    BOTTOM_MARGIN = 0.55               # extra space at bottom
-    TOP_MARGIN = 0.30                  # extra space above alignment line
-    X_PAD_MIN = 60                     # min horizontal padding
-    NON_K03455_X_MAX_DEFAULT = 10_000  # fixed baseline for non-K03455
+    BOTTOM_MARGIN = 0.55
+    TOP_MARGIN = 0.30
+    X_PAD_MIN = 60
+    NON_K03455_X_MAX_DEFAULT = 10_000
 
 
 # ================================
@@ -63,7 +63,14 @@ class NumericOffsets:
 
     @classmethod
     def get_offsets(cls, gene: str) -> tuple[float, float]:
-        """Get offsets for a gene (case-insensitive)."""
+        """
+        Get offsets for a gene (case-insensitive).
+
+        Parameters
+        ----------
+        gene : str
+            Gene name.
+        """
         if not gene:
             return cls.DEFAULT_OFFSETS
 
@@ -124,5 +131,12 @@ class K03455Config:
 
     @classmethod
     def get_k03455_offsets(cls, gene: str) -> tuple[float, float]:
-        """Get K03455-specific offsets for a gene."""
+        """
+        Get K03455-specific offsets for a gene.
+
+        Parameters
+        ----------
+        gene : str
+            Gene name.
+        """
         return cls.K03455_NUMERIC_OFFSETS.get(gene, cls.DEFAULT_K03455_OFFSETS)

@@ -12,9 +12,18 @@ from .utils import get_numeric_offsets_non_special
 def _assign_lanes_nonoverlap(items: List[Tuple[str, Tuple[int, int]]], min_gap: int = 50) -> Dict[str, float]:
     """
     Greedy interval graph coloring to avoid overlaps (only for non-K03455).
-    items: list[(gene, (start, end))] sorted by start
-    min_gap: minimal separation (alignment columns) to share a lane
-    Returns: dict[gene] -> y_base in [0..1]
+
+    Parameters
+    ----------
+    items : List[Tuple[str, Tuple[int, int]]]
+        List of (gene, (start, end)) tuples sorted by start position.
+    min_gap : int, optional
+        Minimum gap required between genes in the same lane, by default 50.
+
+    Returns
+    -------
+    Dict[str, float]
+        Mapping of gene to y-position (lane).
     """
     lanes_last_end = []   # last end per lane
     y_lane = {}           # gene -> lane idx
@@ -36,13 +45,28 @@ def _assign_lanes_nonoverlap(items: List[Tuple[str, Tuple[int, int]]], min_gap: 
 
 
 def plot_gene_axes(
-    ax,
+    ax: "matplotlib.axes.Axes",
     genes_ranges: Dict[str, Tuple[int, int]],
     alignment_start: int,
     alignment_end: int,
     y_positions: Optional[Dict[str, float]] = None,
 ):
-    """Plot gene visualization with alignment information."""
+    """
+    Plot gene visualization with alignment information.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The matplotlib Axes to plot on.
+    genes_ranges : Dict[str, Tuple[int, int]]
+        Mapping of gene names to their (start, end) positions.
+    alignment_start : int
+        Start position of the alignment span.
+    alignment_end : int
+        End position of the alignment span.
+    y_positions : Optional[Dict[str, float]], optional
+        Fixed y-positions for gene lanes, by default None (auto lanes).
+    """
     items = sorted(genes_ranges.items(), key=lambda x: x[1][0])
 
     # K03455: keep fixed map; others: compute non-overlapping lanes
@@ -117,7 +141,24 @@ def plot_gene_axes(
                     arrowprops=dict(arrowstyle="-", color="#6c757d", lw=0.5))
 
     # ----- tat/rev connectors only for K03455 -----
-    def draw_connector(centers, extra_height, label):
+    def draw_connector(centers: List[Tuple[float, float]], extra_height: float, label: str) -> Optional[float]:
+        """
+        Draw connector lines and label for tat/rev.
+
+        Parameters
+        ----------
+        centers: List[Tuple[float, float]]
+            List of (x, y) centers of the genes.
+        extra_height: float
+            Extra height above the highest gene for the connector line.
+        label: str
+            Label to place above the connector.
+
+        Returns
+        -------
+        Optional[float]
+            The y-position of the connector line, or None if no centers.
+        """
         if len(centers) < 1:
             return None
         if len(centers) >= 2:

@@ -22,13 +22,36 @@ def render_sequence_page(
     mm_region: str,
     present_regions: List[str],
     features_aln: Dict[str, tuple],
-    ref_header: str,
     ref_seq_aligned: str,
-    user_header: str,
     user_seq_aligned: str,
     y_positions: Optional[Dict[str, float]] = None
 ):
-    """Render a single sequence page in the PDF report."""
+    """
+    Render a single sequence page in the PDF report.
+
+    Parameters
+    ----------
+    pdf : PdfPages
+        The PdfPages object to save the figure into.
+    sequence : str
+        The name or identifier of the sequence.
+    accession : str
+        The accession number of the sequence.
+    subtype : str
+        The subtype of the sequence.
+    mm_region : str
+        The most matching region of the sequence.
+    present_regions : List[str]
+        List of present regions in the sequence.
+    features_aln : Dict[str, tuple]
+        Dictionary of gene features with their alignment coordinate ranges.
+    ref_seq_aligned : str
+        The reference sequence aligned (with gaps).
+    user_seq_aligned : str
+        The user's sequence aligned (with gaps).
+    y_positions : Optional[Dict[str, float]], optional
+        Fixed y-positions for gene lanes, by default None (auto lanes).
+    """
     fig = plt.figure(figsize=PageLayout.FIGSIZE)
     gs = GridSpec(
         2, 1,  # one column

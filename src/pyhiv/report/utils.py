@@ -5,22 +5,44 @@ Utility functions for PyHIV reporting module.
 import ast
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Any
 
 import pandas as pd
 
-from .constants import NumericOffsets, K03455Config
+from pyhiv.report.constants import NumericOffsets, K03455Config
 
 
 def ungap(seq: str) -> str:
-    """Remove gaps from sequence."""
+    """
+    Remove gaps from sequence.
+
+    Parameters
+    ----------
+    seq : str
+        The input sequence with gaps.
+
+    Returns
+    -------
+    str
+        The ungapped sequence.
+    """
     return seq.replace("-", "").replace(".", "")
 
 
-from typing import Tuple
-
 def first_last_nongap_idx(seq: str) -> Tuple[int, int]:
-    """Return the first and last indices of non-gap characters in a sequence."""
+    """
+    Return the first and last indices of non-gap characters in a sequence.
+
+    Parameters
+    ----------
+    seq : str
+        The input sequence with gaps.
+
+    Returns
+    -------
+    Tuple[int, int]
+        A tuple containing the first and last indices of non-gap characters.
+    """
     if not seq or all(c in "-." for c in seq):
         return 0, 0
 
@@ -30,7 +52,23 @@ def first_last_nongap_idx(seq: str) -> Tuple[int, int]:
 
 
 def read_alignment_fasta(fpath: Path) -> Tuple[str, str, str, str]:
-    """Read alignment FASTA file and return headers and sequences."""
+    """
+    Read alignment FASTA file and return headers and sequences.
+
+    Parameters
+    ----------
+    fpath : Path
+        Path to the alignment FASTA file.
+
+    Returns
+    -------
+    Tuple[str, str, str, str]
+        A tuple containing:
+        - Reference header
+        - Reference sequence (aligned)
+        - User header
+        - User sequence (aligned)
+    """
     if not fpath.exists():
         raise FileNotFoundError(f"Alignment FASTA not found: {fpath}")
 
@@ -59,8 +97,20 @@ def read_alignment_fasta(fpath: Path) -> Tuple[str, str, str, str]:
     return headers[idx_ref], seqs[idx_ref], headers[idx_usr], seqs[idx_usr]
 
 
-def parse_present_regions(cell) -> List[str]:
-    """Parse present regions from a table cell into a list of region strings."""
+def parse_present_regions(cell: Any) -> List[str]:
+    """
+    Parse present regions from a table cell into a list of region strings.
+
+    Parameters
+    ----------
+    cell : Any
+        The table cell containing present regions.
+
+    Returns
+    -------
+    List[str]
+        A list of present region strings.
+    """
     if cell is None:
         return []
 
@@ -82,8 +132,20 @@ def parse_present_regions(cell) -> List[str]:
     return []
 
 
-def parse_features(cell) -> Dict[str, Tuple[int, int]]:
-    """Parse features from table cell."""
+def parse_features(cell: Any) -> Dict[str, Tuple[int, int]]:
+    """
+    Parse features from table cell.
+
+    Parameters
+    ----------
+    cell : Any
+        The table cell containing features.
+
+    Returns
+    -------
+    Dict[str, Tuple[int, int]]
+        A dictionary mapping feature names to (start, end) tuples.
+    """
     if cell is None or (isinstance(cell, float) and pd.isna(cell)):
         return {}
     if isinstance(cell, dict):
@@ -93,7 +155,21 @@ def parse_features(cell) -> Dict[str, Tuple[int, int]]:
 
 
 def is_special_reference(accession: str, ref_header: str) -> bool:
-    """Check if reference is special (K03455)."""
+    """
+    Check if reference is special (K03455).
+
+    Parameters
+    ----------
+    accession : str
+        The accession number of the reference.
+    ref_header : str
+        The header of the reference sequence.
+
+    Returns
+    -------
+    bool
+        True if the reference is K03455, False otherwise.
+    """
     return (accession or "").strip() == "K03455" or "K03455-B" in (ref_header or "")
 
 _CANON_PATTERNS = [
@@ -113,7 +189,19 @@ _CANON_PATTERNS = [
 ]
 
 def canon_label(label: str) -> Optional[str]:
-    """Canonicalize gene label for K03455."""
+    """
+    Canonicalize gene label for K03455.
+
+    Parameters
+    ----------
+    label : str
+        The input gene label.
+
+    Returns
+    -------
+    Optional[str]
+        The canonical gene label, or None if not recognized.
+    """
     s = (label or "").strip()
     if not s:
         return None
@@ -133,9 +221,21 @@ def canon_label(label: str) -> Optional[str]:
 
 
 def normalize_features(raw_features: Dict[str, Tuple[int, int]], special: bool) -> Dict[str, Tuple[int, int]]:
-    """Normalize features based on reference type."""
-    from .constants import K03455Config
-    
+    """
+    Normalize features based on reference type.
+
+    Parameters
+    ----------
+    raw_features : Dict[str, Tuple[int, int]]
+        Raw features mapping.
+    special : bool
+        Whether the reference is special (K03455).
+
+    Returns
+    -------
+    Dict[str, Tuple[int, int]]
+        Normalized features mapping.
+    """
     raw_features = raw_features or {}
     if not special:
         return {str(k): (int(v[0]), int(v[1])) for k, v in raw_features.items()}
@@ -149,9 +249,20 @@ def normalize_features(raw_features: Dict[str, Tuple[int, int]], special: bool) 
 
 
 def normalize_present_regions(regions: List[str], special: bool) -> List[str]:
-    """Normalize present regions based on reference type."""
-    from .constants import K03455Config
-    
+    """
+    Normalize present regions based on reference type.
+
+    Parameters
+    ----------
+    regions : List[str]
+        List of raw present regions.
+    special : bool
+        Whether the reference is special (K03455).
+    Returns
+    -------
+    List[str]
+        Normalized list of present regions.
+    """
     regions = regions or []
     if not special:
         return regions
@@ -165,7 +276,21 @@ def normalize_present_regions(regions: List[str], special: bool) -> List[str]:
 
 
 def build_ref_to_alignment_map(ref_aligned: str) -> Tuple[Dict[int, int], int]:
-    """Build mapping from reference coordinates to alignment coordinates."""
+    """
+    Build mapping from reference coordinates to alignment coordinates.
+
+    Parameters
+    ----------
+    ref_aligned : str
+        The reference sequence with alignment gaps.
+
+    Returns
+    -------
+    Tuple[Dict[int, int], int]
+        A tuple containing:
+        - A dictionary mapping reference positions to alignment indices.
+        - The length of the aligned reference sequence.
+    """
     mapping = {}
     ref_pos = 0
     for aln_idx, ch in enumerate(ref_aligned):
@@ -175,8 +300,23 @@ def build_ref_to_alignment_map(ref_aligned: str) -> Tuple[Dict[int, int], int]:
     return mapping, len(ref_aligned)
 
 
-def project_features_to_alignment(features_genomic: Dict[str, Tuple[int, int]], ref_map: Dict[int, int]) -> Dict[str, Tuple[int, int]]:
-    """Project genomic features to alignment coordinates."""
+def project_features_to_alignment(features_genomic: Dict[str, Tuple[int, int]],
+                                  ref_map: Dict[int, int]) -> Dict[str, Tuple[int, int]]:
+    """
+    Project genomic features to alignment coordinates.
+
+    Parameters
+    ----------
+    features_genomic : Dict[str, Tuple[int, int]]
+        Genomic features mapping.
+    ref_map : Dict[int, int]
+        Reference to alignment mapping.
+
+    Returns
+    -------
+    Dict[str, Tuple[int, int]]
+        Features projected to alignment coordinates.
+    """
     projected = {}
     for gene, (gstart, gend) in features_genomic.items():
         if gstart in ref_map and gend in ref_map:
@@ -187,11 +327,37 @@ def project_features_to_alignment(features_genomic: Dict[str, Tuple[int, int]], 
 
 
 def get_numeric_offsets_non_special(gene: str) -> tuple[float, float]:
-    """Get numeric offsets for non-K03455 references using NumericOffsets."""
+    """
+    Get numeric offsets for non-K03455 references using NumericOffsets.
+
+    Parameters
+    ----------
+    gene : str
+        The gene name.
+
+    Returns
+    -------
+    tuple[float, float]
+        A tuple containing (start_offset, end_offset).
+    """
     return NumericOffsets.get_offsets(gene)
 
 
 def build_alignment_path(sequence: str, alignments_dir: Path) -> Path:
-    """Build path to alignment FASTA file."""
+    """
+    Build path to alignment FASTA file.
+
+    Parameters
+    ----------
+    sequence : str
+        The name or identifier of the sequence.
+    alignments_dir : Path
+        The directory containing alignment FASTA files.
+
+    Returns
+    -------
+    Path
+        The path to the alignment FASTA file.
+    """
     p = alignments_dir / f"best_alignment_{sequence}.fasta"
     return p if p.exists() else (alignments_dir / f"{sequence}.fasta")

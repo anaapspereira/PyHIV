@@ -8,21 +8,30 @@ import logging
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 
-from .constants import K03455Config
-from .utils import (
+from pyhiv.report import render_sequence_page
+from pyhiv.report.constants import K03455Config
+from pyhiv.report.utils import (
     read_alignment_fasta, parse_present_regions, parse_features,
     is_special_reference, normalize_features, normalize_present_regions,
     build_ref_to_alignment_map, project_features_to_alignment,
     build_alignment_path
 )
-from .pdf_generator import render_sequence_page
 
 
 class PyHIVReporter:
     """Main class for generating PyHIV PDF reports."""
     
     def __init__(self, output_dir: Path, log_level=logging.INFO):
-        """Initialize the reporter with output directory and logger."""
+        """
+        Initialize the reporter with output directory and logger.
+
+        Parameters
+        ----------
+        output_dir : Path
+            Directory to save the generated PDF report.
+        log_level : int, optional
+            Logging level, by default logging.INFO
+        """
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -48,14 +57,20 @@ class PyHIVReporter:
     ) -> Path:
         """
         Generate PDF report from PyHIV results.
-        
-        Args:
-            final_table_path: Path to final_table.tsv
-            sequences_with_locations_path: Path to sequences_with_locations.tsv
-            output_pdf_name: Name of output PDF file
-            
-        Returns:
-            Path to generated PDF file
+
+        Parameters
+        ----------
+        final_table_path : Path
+            Path to final_table.tsv file.
+        sequences_with_locations_path : Path
+            Path to sequences_with_locations.tsv file.
+        output_pdf_name : str, optional
+            Name of the output PDF file, by default "PyHIV_report_all_sequences.pdf"
+
+        Returns
+        -------
+        Path
+            Path to the generated PDF report.
         """
         # Read input data
         self.logger.info("Reading final_table.tsv and sequences_with_locations.tsv...")
