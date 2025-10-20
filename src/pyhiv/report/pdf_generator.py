@@ -3,7 +3,7 @@ PDF report generation for PyHIV results.
 """
 
 import textwrap
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -21,7 +21,7 @@ def render_sequence_page(
     subtype: str,
     mm_region: str,
     present_regions: List[str],
-    features_aln: Dict[str, tuple],
+    features_aln: Dict[str, Tuple[int, int]],
     ref_header: str, # TODO: unused?
     ref_seq_aligned: str,
     user_header: str, # TODO: unused?
@@ -45,7 +45,7 @@ def render_sequence_page(
         The most matching region of the sequence.
     present_regions : List[str]
         List of present regions in the sequence.
-    features_aln : Dict[str, tuple]
+    features_aln : Dict[str, Tuple[int, int]]
         Dictionary of gene features with their alignment coordinate ranges.
     ref_seq_aligned : str
         The reference sequence aligned (with gaps).
