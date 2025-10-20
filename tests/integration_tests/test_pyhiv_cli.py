@@ -64,6 +64,20 @@ class TestPyHIVCLI(TestCase):
         )
         self.assertIn(f"PyHIV v{__version__}", result.output)
 
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    @patch("pyhiv.PyHIV")
+    def test_run_cli_quiet_mode(self, mock_pyhiv):
+        """Test running CLI in quiet mode (suppresses non-error output)."""
+        result = self.runner.invoke(
+            cli, ["run", str(DATA_DIR), "--quiet"]
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        mock_pyhiv.assert_called_once()
+        # Quiet mode shouldn't print normal messages
+        self.assertNotIn("Processing", result.output)
+        self.assertEqual(result.output.strip(), "")
+
     def test_validate_cli_no_files(self):
         """Test validate command with empty directory."""
         empty_dir = TEST_DIR / "empty_dir"
