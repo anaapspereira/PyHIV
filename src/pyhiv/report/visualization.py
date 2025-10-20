@@ -5,7 +5,7 @@ Gene visualization and plotting functions for PyHIV reporting module.
 from typing import Dict, List, Tuple, Optional
 import matplotlib.patches as mpatches
 
-from .constants import GenePanelConfig
+from .constants import GenePanelConfig, K03455Config
 from .utils import get_numeric_offsets_non_special
 
 
@@ -115,21 +115,7 @@ def plot_gene_axes(
             # NON-K03455 → configurable map
             offset_down, offset_up = get_numeric_offsets_non_special(gene)
         else:
-            # K03455 → original behavior (unchanged)
-            if gene == "tat 1":       offset_down, offset_up = -0.15, 0.15
-            elif gene == "tat 2":     offset_down, offset_up = -0.15, 0.20
-            elif gene == "rev 1":     offset_down, offset_up =  0.20, 0.25
-            elif gene == "rev 2":     offset_down, offset_up =  0.20, 0.25
-            elif gene == "gag":       offset_down, offset_up =  0.30, 0.20
-            elif gene == "vif":       offset_down, offset_up = -0.15, -0.20
-            elif gene == "5' LTR":    offset_down, offset_up = -0.15, -0.20
-            elif gene == "pol":       offset_down, offset_up = -0.15, -0.20
-            elif gene == "vpu":       offset_down, offset_up =  0.35, 0.15
-            elif gene == "env":       offset_down, offset_up = -0.15, -0.20
-            elif gene == "vpr":       offset_down, offset_up =  0.20, -0.20
-            elif gene == "nef":       offset_down, offset_up = -0.15, -0.20
-            elif gene == "3' LTR":    offset_down, offset_up =  0.25, -0.20
-            else:                      offset_down, offset_up = -0.15, 0.35
+            offset_down, offset_up = K03455Config.get_k03455_offsets(gene)
 
         ax.annotate(str(start), xy=(start, y), xycoords="data",
                     xytext=(start, y + offset_down), textcoords="data",
