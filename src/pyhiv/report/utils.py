@@ -5,11 +5,11 @@ Utility functions for PyHIV reporting module.
 import ast
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
 
 import pandas as pd
 
-from .constants import NumericOffsets
+from .constants import NumericOffsets, K03455Config
 
 
 def ungap(seq: str) -> str:
@@ -17,18 +17,15 @@ def ungap(seq: str) -> str:
     return seq.replace("-", "").replace(".", "")
 
 
+from typing import Tuple
+
 def first_last_nongap_idx(seq: str) -> Tuple[int, int]:
-    """Find first and last non-gap positions in sequence."""
-    if not seq or set(seq).issubset({"-", "."}):
+    """Return the first and last indices of non-gap characters in a sequence."""
+    if not seq or all(c in "-." for c in seq):
         return 0, 0
-    try:
-        first = next((i for i, c in enumerate(seq) if c not in "-."), 0)
-    except StopIteration:
-        return 0, 0
-    try:
-        last = len(seq) - 1 - next((i for i, c in enumerate(reversed(seq)) if c not in "-."), 0)
-    except StopIteration:
-        last = first
+
+    first = next((i for i, c in enumerate(seq) if c not in "-."), 0)
+    last = len(seq) - 1 - next((i for i, c in enumerate(reversed(seq)) if c not in "-."), 0)
     return first, last
 
 
@@ -63,21 +60,26 @@ def read_alignment_fasta(fpath: Path) -> Tuple[str, str, str, str]:
 
 
 def parse_present_regions(cell) -> List[str]:
-    """Parse present regions from table cell."""
+    """Parse present regions from a table cell into a list of region strings."""
     if cell is None:
         return []
+
     cell = str(cell).strip()
     if not cell or cell == "-":
         return []
+
     try:
         val = ast.literal_eval(cell)
-        if isinstance(val, (list, tuple)):
-            return [str(x).strip().strip("'").strip('"') for x in val]
-        if isinstance(val, str):
-            cell = val
     except Exception:
-        pass
-    return [p.strip().strip("'").strip('"') for p in cell.split(",") if p.strip()]
+        val = cell
+
+    if isinstance(val, (list, tuple)):
+        return [str(x).strip().strip("'\"") for x in val]
+
+    if isinstance(val, str):
+        return [p.strip().strip("'\"") for p in val.split(",") if p.strip()]
+
+    return []
 
 
 def parse_features(cell) -> Dict[str, Tuple[int, int]]:
@@ -94,39 +96,39 @@ def is_special_reference(accession: str, ref_header: str) -> bool:
     """Check if reference is special (K03455)."""
     return (accession or "").strip() == "K03455" or "K03455-B" in (ref_header or "")
 
+_CANON_PATTERNS = [
+    (re.compile(r"^\s*5\s*'? *ltr\s*$", re.I), "5' LTR"),
+    (re.compile(r"^\s*gag\s*$", re.I), "gag"),
+    (re.compile(r"^\s*pol(\s*cds)?\s*$", re.I), "pol"),
+    (re.compile(r"^\s*vif(\s*cds)?\s*$", re.I), "vif"),
+    (re.compile(r"^\s*vpr(\s*cds)?\s*$", re.I), "vpr"),
+    (re.compile(r"^\s*vpu(\s*cds)?\s*$", re.I), "vpu"),
+    (re.compile(r"^\s*tat(\s*exon)?\s*(?:1|i)\s*$", re.I), "tat 1"),
+    (re.compile(r"^\s*tat(\s*exon)?\s*(?:2|ii)\s*$", re.I), "tat 2"),
+    (re.compile(r"^\s*rev(\s*exon)?\s*(?:1|i)\s*$", re.I), "rev 1"),
+    (re.compile(r"^\s*rev(\s*exon)?\s*(?:2|ii)\s*$", re.I), "rev 2"),
+    (re.compile(r"^\s*env(\s*cds)?\s*$", re.I), "env"),
+    (re.compile(r"^\s*nef(\s*cds)?\s*$", re.I), "nef"),
+    (re.compile(r"^\s*3\s*'? *ltr\s*$", re.I), "3' LTR"),
+]
 
 def canon_label(label: str) -> Optional[str]:
     """Canonicalize gene label for K03455."""
-    from .constants import K03455Config
-    
-    # Patterns for canonicalization
-    patterns = [
-        (re.compile(r"^\s*5\s*'? *ltr\s*$", re.I), "5' LTR"),
-        (re.compile(r"^\s*gag\s*$", re.I), "gag"),
-        (re.compile(r"^\s*pol(\s*cds)?\s*$", re.I), "pol"),
-        (re.compile(r"^\s*vif(\s*cds)?\s*$", re.I), "vif"),
-        (re.compile(r"^\s*vpr(\s*cds)?\s*$", re.I), "vpr"),
-        (re.compile(r"^\s*vpu(\s*cds)?\s*$", re.I), "vpu"),
-        # Accept either numeric or roman numerals (i/ii) for exon indices
-        (re.compile(r"^\s*tat(\s*exon)?\s*(?:1|i)\s*$", re.I), "tat 1"),
-        (re.compile(r"^\s*tat(\s*exon)?\s*(?:2|ii)\s*$", re.I), "tat 2"),
-        (re.compile(r"^\s*rev(\s*exon)?\s*(?:1|i)\s*$", re.I), "rev 1"),
-        (re.compile(r"^\s*rev(\s*exon)?\s*(?:2|ii)\s*$", re.I), "rev 2"),
-        (re.compile(r"^\s*env(\s*cds)?\s*$", re.I), "env"),
-        (re.compile(r"^\s*nef(\s*cds)?\s*$", re.I), "nef"),
-        (re.compile(r"^\s*3\s*'? *ltr\s*$", re.I), "3' LTR"),
-    ]
-    
     s = (label or "").strip()
-    for pat, out in patterns:
-        if pat.match(s):
-            return out
+    if not s:
+        return None
+
+    for pattern, canonical in _CANON_PATTERNS:
+        if pattern.match(s):
+            return canonical
+
+    # Direct or case-insensitive match to configured target regions
     if s in K03455Config.TARGET_REGIONS:
         return s
     s_lower = s.lower()
-    for x in K03455Config.TARGET_REGIONS:
-        if x.lower() == s_lower:
-            return x
+    for target in K03455Config.TARGET_REGIONS:
+        if target.lower() == s_lower:
+            return target
     return None
 
 
