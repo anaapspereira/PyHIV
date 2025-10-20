@@ -73,7 +73,7 @@ class PyHIVReporter:
             Path to the generated PDF report.
         """
         # Read input data
-        self.logger.info("Reading final_table.tsv and sequences_with_locations.tsv...")
+        self.logger.info(f"Reading {final_table_path} and {sequences_with_locations_path}...")
         ft = pd.read_csv(final_table_path, sep="\t")
         required = ["Sequence", "Reference", "Subtype", "Most Matching Gene Region", "Present Gene Regions"]
         missing = [c for c in required if c not in ft.columns]
