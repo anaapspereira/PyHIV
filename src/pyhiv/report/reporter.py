@@ -3,6 +3,7 @@ Main reporting class for PyHIV results.
 """
 
 from pathlib import Path
+import logging
 
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
@@ -20,10 +21,24 @@ from .pdf_generator import render_sequence_page
 class PyHIVReporter:
     """Main class for generating PyHIV PDF reports."""
     
-    def __init__(self, output_dir: Path):
-        """Initialize the reporter with output directory."""
+    def __init__(self, output_dir: Path, log_level=logging.INFO):
+        """Initialize the reporter with output directory and logger."""
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Configure logger
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.setLevel(log_level)
+
+        # Avoid adding duplicate handlers if multiple instances are created
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter(
+                fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S"
+            )
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
     
     def generate_report(
         self,
@@ -43,6 +58,7 @@ class PyHIVReporter:
             Path to generated PDF file
         """
         # Read input data
+        self.logger.info("Reading final_table.tsv and sequences_with_locations.tsv...")
         ft = pd.read_csv(final_table_path, sep="\t")
         required = ["Sequence", "Reference", "Subtype", "Most Matching Gene Region", "Present Gene Regions"]
         missing = [c for c in required if c not in ft.columns]
@@ -59,11 +75,13 @@ class PyHIVReporter:
             acc = str(row["accession"])
             try:
                 features_by_acc[acc] = parse_features(row["features"])
-            except Exception:
+            except Exception as e:
+                self.logger.warning(f"Failed to parse features for accession {acc}: {e}")
                 features_by_acc[acc] = {}
 
         # Generate PDF
         output_pdf_path = self.output_dir / output_pdf_name
+        self.logger.info(f"Generating PDF report: {output_pdf_path}")
         with PdfPages(output_pdf_path) as pdf:
             pages_made = 0
 
@@ -77,13 +95,13 @@ class PyHIVReporter:
                 # Find alignment file
                 fasta_path = build_alignment_path(sequence, self.output_dir)
                 if not fasta_path.exists():
-                    print(f"[!] Alignment FASTA not found for {sequence}: {fasta_path}")
+                    self.logger.warning(f"Alignment FASTA not found for {sequence}: {fasta_path}")
                     continue
 
                 try:
                     ref_header, ref_seq_aln, user_header, user_seq_aln = read_alignment_fasta(fasta_path)
                 except Exception as e:
-                    print(f"[!] Error reading {fasta_path}: {e}")
+                    self.logger.error(f"Error reading {fasta_path}: {e}")
                     continue
 
                 special = is_special_reference(accession, ref_header)
@@ -119,11 +137,13 @@ class PyHIVReporter:
                 )
 
                 pages_made += 1
-                print(f"[OK] Added page for: {sequence} (special={special}, features={list(features_aln.keys())})")
+                self.logger.info(
+                    f"Added page for {sequence} (special={special}, features={list(features_aln.keys())})"
+                )
 
         if pages_made == 0:
-            print("[!] No pages created. Check your paths and file formats.")
+            self.logger.warning("No pages created. Check your paths and file formats.")
         else:
-            print(f"[OK] Single PDF created: {output_pdf_path} (pages: {pages_made})")
+            self.logger.info(f"PDF created: {output_pdf_path} (pages: {pages_made})")
         
         return output_pdf_path
