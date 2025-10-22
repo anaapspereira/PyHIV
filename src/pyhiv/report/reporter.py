@@ -144,9 +144,7 @@ class PyHIVReporter:
                     mm_region=mm_region if mm_region != "-" else "",
                     present_regions=present_regions,
                     features_aln=features_aln,
-                    ref_header=ref_header,
                     ref_seq_aligned=ref_seq_aln,
-                    user_header=user_header,
                     user_seq_aligned=user_seq_aln,
                     y_positions=y_pos,
                 )

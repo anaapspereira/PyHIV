@@ -22,9 +22,7 @@ def render_sequence_page(
     mm_region: str,
     present_regions: List[str],
     features_aln: Dict[str, Tuple[int, int]],
-    ref_header: str, # TODO: unused?
     ref_seq_aligned: str,
-    user_header: str, # TODO: unused?
     user_seq_aligned: str,
     y_positions: Optional[Dict[str, float]] = None
 ):
