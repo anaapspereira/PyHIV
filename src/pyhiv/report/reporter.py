@@ -84,7 +84,7 @@ class PyHIVReporter:
         ft = pd.read_csv(final_table_path, sep="\t")
         required = ["Sequence", "Reference", "Subtype", "Most Matching Gene Region", "Present Gene Regions"]
         missing = [c for c in required if c not in ft.columns]
-        if missing:
+        if missing and self.splitting:
             raise ValueError(f"Missing columns in final_table: {missing}")
 
         swl = pd.read_csv(sequences_with_locations_path, sep="\t")
