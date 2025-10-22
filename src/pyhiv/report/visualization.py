@@ -102,7 +102,7 @@ def plot_gene_axes(
         # - K03455: all except tat/rev (they use connectors)
         if non_special or not (is_tat or is_rev):
             ax.text(cx, y, gene, ha="center", va="center",
-                    fontsize=8, fontweight="bold", color="white")
+                    fontsize=8, fontweight="bold", color="black")
         else:
             # K03455: collect centers for connectors
             if is_tat:
