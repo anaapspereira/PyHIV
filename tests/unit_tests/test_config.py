@@ -28,8 +28,8 @@ class TestConfig(unittest.TestCase):
     def test_get_reference_base_dir_default(self):
         """Should use default path if REFERENCE_GENOMES_DIR not set."""
         base = get_reference_base_dir()
-        # Check that it ends with loading/reference_genomes (don't hardcode full path)
-        self.assertTrue(str(base).endswith("loading/reference_genomes"))
+        # Check that it ends with loading/reference_genomes in an OS-agnostic way
+        self.assertEqual(base.parts[-2:], ("loading", "reference_genomes"))
 
     def test_get_reference_paths_from_base_dir(self):
         """Should construct correct paths given a base directory."""
