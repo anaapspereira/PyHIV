@@ -51,7 +51,7 @@ class TestReportingIntegration(TestCase):
             user_seq = "-" * 10 + ("ACGT" * 40) + "-" * 10
             self.write_alignment_fasta(output_dir / "best_alignment_seq1.fasta", "K03455-B", ref_seq, "seq1", user_seq)
 
-            reporter = PyHIVReporter(output_dir)
+            reporter = PyHIVReporter(output_dir, subtyping=True, splitting=True)
             pdf_path = reporter.generate_report(
                 final_table_path=final_table_path,
                 sequences_with_locations_path=swl_path,

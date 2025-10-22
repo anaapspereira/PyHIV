@@ -23,9 +23,7 @@ class TestReportingPdfGenerator(TestCase):
                     mm_region="gag",
                     present_regions=["gag"],
                     features_aln={"gag": (10, 50)},
-                    ref_header="Reference K03455-B",
                     ref_seq_aligned="ACGT" * 30,
-                    user_header=">seq1",
                     user_seq_aligned="ACGT" * 25,
                     y_positions=None,
                 )

@@ -14,7 +14,7 @@ class TestPyHIVReporter(TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.tmp_path = Path(self.temp_dir.name)
-        self.reporter = PyHIVReporter(self.tmp_path)
+        self.reporter = PyHIVReporter(self.tmp_path, subtyping=True, splitting=True)
 
         # Dummy table DataFrames
         self.final_table = self.tmp_path / "final_table.tsv"
