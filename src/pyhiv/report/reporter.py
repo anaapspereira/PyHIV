@@ -21,7 +21,7 @@ from pyhiv.report.utils import (
 class PyHIVReporter:
     """Main class for generating PyHIV PDF reports."""
     
-    def __init__(self, output_dir: Path, log_level=logging.INFO):
+    def __init__(self, output_dir: Path, subtyping: bool, splitting: bool, log_level=logging.INFO):
         """
         Initialize the reporter with output directory and logger.
 
@@ -29,11 +29,18 @@ class PyHIVReporter:
         ----------
         output_dir : Path
             Directory to save the generated PDF report.
+        subtyping : bool
+            Whether subtyping was performed.
+        splitting : bool
+            Whether splitting was performed.
         log_level : int, optional
             Logging level, by default logging.INFO
         """
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        self.subtyping = subtyping
+        self.splitting = splitting
 
         # Configure logger
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -75,7 +82,10 @@ class PyHIVReporter:
         # Read input data
         self.logger.info(f"Reading {final_table_path} and {sequences_with_locations_path}...")
         ft = pd.read_csv(final_table_path, sep="\t")
-        required = ["Sequence", "Reference", "Subtype", "Most Matching Gene Region", "Present Gene Regions"]
+        if self.splitting:
+            required = ["Sequence", "Reference", "Subtype", "Most Matching Gene Region", "Present Gene Regions"]
+        else:
+            required = ["Sequence", "Reference", "Subtype"]
         missing = [c for c in required if c not in ft.columns]
         if missing:
             raise ValueError(f"Missing columns in final_table: {missing}")
@@ -103,9 +113,9 @@ class PyHIVReporter:
             for _, r in ft.iterrows():
                 sequence = str(r["Sequence"])
                 accession = str(r["Reference"])
-                subtype = str(r["Subtype"])
+                subtype = str(r["Subtype"]) if self.subtyping else "No subtyping performed."
                 mm_region = str(r["Most Matching Gene Region"]) if "Most Matching Gene Region" in r else "-"
-                present_regions_raw = parse_present_regions(r.get("Present Gene Regions", ""))
+                present_regions_raw = parse_present_regions(r.get("Present Gene Regions", "")) if self.splitting else []
 
                 # Find alignment file
                 fasta_path = build_alignment_path(sequence, self.output_dir)
