@@ -1,30 +1,73 @@
 # 🧬 PyHIV Command Line Interface
 
+<div align="center">
+
 A comprehensive command-line interface for HIV-1 sequence alignment, subtyping, and gene region splitting.
+
+[![PyPI version](https://img.shields.io/pypi/v/pyhiv-tools)](https://pypi.org/project/pyhiv-tools/)
+[![Python Version](https://img.shields.io/pypi/pyversions/pyhiv-tools)](https://pypi.org/project/pyhiv-tools/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+</div>
+
+---
+
+## 📋 Table of Contents
+
+- [Installation](#-installation)
+- [Getting Started](#-getting-started)
+- [Commands](#-commands)
+- [Options](#-options)
+- [Usage Examples](#-usage-examples)
+- [Input Requirements](#-input-requirements)
+- [Output Structure](#-output-structure)
+- [Advanced Usage](#-advanced-usage)
+- [Troubleshooting](#-troubleshooting)
+- [Performance Tips](#-performance-tips)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Citation](#-citation)
+
+---
 
 ## 📦 Installation
 
-Install PyHIV using pip:
+### From PyPI (Recommended)
 
 ```bash
 pip install pyhiv-tools
 ```
 
-Or install from source:
+### From Source
 
 ```bash
 git clone https://github.com/anaapspereira/PyHIV.git
-cd pyhiv
+cd PyHIV
 pip install -e .
 ```
 
-Verify installation:
+### Development Installation
+
+```bash
+git clone https://github.com/anaapspereira/PyHIV.git
+cd PyHIV
+pip install -e ".[dev]"
+```
+
+### Verify Installation
 
 ```bash
 pyhiv --version
 ```
 
+**Expected output:**
+```
+pyhiv, version 0.1.0
+```
+
 ## 🚀 Getting Started
+
+### Quick Start
 
 Run PyHIV with default settings:
 
@@ -33,16 +76,33 @@ pyhiv run /path/to/fastas/
 ```
 
 This will:
-- Align sequences with reference genomes
-- Perform HIV-1 subtyping
-- Split sequences into gene regions
-- Save results to `PyHIV_results/`
+- ✅ Align sequences with reference genomes
+- ✅ Perform HIV-1 subtyping
+- ✅ Split sequences into gene regions
+- ✅ Save results to `PyHIV_results/`
+
+### First Time Setup
+
+1. **Prepare your sequences**: Place FASTA files in a directory
+2. **Validate input**: Check your files before processing
+   ```bash
+   pyhiv validate /path/to/fastas/
+   ```
+3. **Run analysis**: Process your sequences
+   ```bash
+   pyhiv run /path/to/fastas/ -v
+   ```
+4. **Check results**: Review the output
+   ```bash
+   ls PyHIV_results/
+   cat PyHIV_results/final_table.tsv
+   ```
 
 ## 🧭 Commands
 
-### `pyhiv run`
+### `pyhiv run` - Main Processing Command
 
-Main command to process HIV-1 sequences.
+Processes HIV-1 sequences for alignment, subtyping, and gene splitting.
 
 ```bash
 pyhiv run [OPTIONS] FASTAS_DIR
@@ -51,48 +111,109 @@ pyhiv run [OPTIONS] FASTAS_DIR
 **Arguments:**
 - `FASTAS_DIR`: Directory containing input FASTA files (required)
 
-### `pyhiv validate`
+**What it does:**
+- 🔍 Reads all FASTA files from the specified directory
+- 🧬 Aligns sequences against reference genomes
+- 🏷️ Determines HIV-1 subtypes (if enabled)
+- ✂️ Splits sequences into gene regions (if enabled)
+- 📊 Generates summary table and reports
 
-Validate input directory without processing.
+### `pyhiv validate` - Input Validation
+
+Validates input directory and files without processing.
 
 ```bash
 pyhiv validate FASTAS_DIR
 ```
 
-Checks:
-- Directory exists and is readable
-- FASTA files are present
-- Lists found files (up to 10)
+**What it checks:**
+- ✅ Directory exists and is readable
+- ✅ FASTA files are present
+- ✅ File format validation
+- 📋 Lists found files
 
 ## ⚙️ Options
 
-### Processing Options
+### 🔧 Processing Options
+
+Control the analysis pipeline behavior.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--subtyping` / `--no-subtyping` | `--subtyping` | Enable/disable HIV-1 subtyping |
+| `--subtyping` / `--no-subtyping` | `--subtyping` | Enable/disable HIV-1 subtyping against reference genomes |
 | `--splitting` / `--no-splitting` | `--splitting` | Enable/disable gene region splitting |
 
-### Output Options
+**Examples:**
+```bash
+# Full analysis (default)
+pyhiv run sequences/
+
+# Alignment only
+pyhiv run sequences/ --no-subtyping --no-splitting
+
+# Subtyping without splitting
+pyhiv run sequences/ --no-splitting
+```
+
+### 📁 Output Options
+
+Control where and how results are saved.
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `-o`, `--output-dir PATH` | `PyHIV_results` | Output directory for results |
 
-### Performance Options
+**Examples:**
+```bash
+# Custom output directory
+pyhiv run sequences/ -o my_analysis_results/
+
+# Timestamped results
+pyhiv run sequences/ -o results_$(date +%Y%m%d)/
+```
+
+### ⚡ Performance Options
+
+Optimize processing speed and resource usage.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `-j`, `--n-jobs INTEGER` | All CPUs | Number of parallel jobs |
+| `-j`, `--n-jobs INTEGER` | All CPUs | Number of parallel jobs for alignment |
 
-### Display Options
+**Examples:**
+```bash
+# Use all available CPUs (default)
+pyhiv run sequences/
+
+# Limit to 4 cores
+pyhiv run sequences/ -j 4
+
+# Single-threaded processing
+pyhiv run sequences/ -j 1
+```
+
+### 📺 Display Options
+
+Control output verbosity and information display.
 
 | Option | Description |
 |--------|-------------|
-| `-v`, `--verbose` | Enable detailed output |
+| `-v`, `--verbose` | Enable detailed output with timing information |
 | `-q`, `--quiet` | Suppress all non-error output |
 | `--version` | Show version and exit |
 | `--help` | Show help message and exit |
+
+**Examples:**
+```bash
+# Verbose output for debugging
+pyhiv run sequences/ -v
+
+# Quiet mode for scripting
+pyhiv run sequences/ -q
+
+# Get help
+pyhiv run --help
+```
 
 ## 💼 Usage Examples
 
@@ -142,17 +263,6 @@ pyhiv run sequences/ -q
 pyhiv validate sequences/
 ```
 
-**Example output:**
-```
-✓ Found 15 FASTA file(s)
-
-Files:
-  • sequence1.fasta
-  • sequence2.fasta
-  • sequence3.fa
-  ...
-```
-
 ### Pipeline Examples
 
 **Complete workflow:**
@@ -165,22 +275,6 @@ pyhiv run data/raw_sequences/ -o results/run1/ -v
 
 # 3. Process subset without splitting
 pyhiv run data/subset/ -o results/run2/ --no-splitting -j 4
-```
-
-**Integration with shell scripts:**
-```bash
-#!/bin/bash
-INPUT_DIR="sequences/"
-OUTPUT_DIR="results_$(date +%Y%m%d_%H%M%S)"
-
-# Validate first
-if pyhiv validate "$INPUT_DIR"; then
-    echo "Validation passed, starting processing..."
-    pyhiv run "$INPUT_DIR" -o "$OUTPUT_DIR" -j 8
-else
-    echo "Validation failed!"
-    exit 1
-fi
 ```
 
 ## 📥 Input Requirements
@@ -205,12 +299,6 @@ sequences/
 ```
 
 PyHIV recursively searches for FASTA files in all subdirectories.
-
-### File Requirements
-
-- Valid FASTA format
-- HIV-1 sequences (DNA or RNA)
-- Sequence IDs should be unique
 
 ## 📂 Output Structure
 
