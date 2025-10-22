@@ -9,6 +9,7 @@ Subpackages
 
    pyhiv.align
    pyhiv.loading
+   pyhiv.report
    pyhiv.split
 
 Submodules

@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import time
 from pyhiv import __version__
+import logging
 
 SUPPORTED_FASTA_EXTENSIONS = {'.fasta', '.fa', '.fna', '.ffn'}
 
@@ -64,7 +65,13 @@ def count_fasta_files(directory):
     is_flag=True,
     help='Suppress all non-error output.'
 )
-def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet):
+@click.option(
+    '--reporting/--no-reporting',
+    default=True,
+    show_default=True,
+    help='Enable or disable PDF report generation. When enabled, generates a PDF report with sequence visualizations.'
+)
+def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet, reporting):
     """
     PyHIV: HIV-1 sequence alignment, subtyping, and gene region splitting tool.
 
@@ -91,6 +98,20 @@ def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet):
     # Handle conflicting flags
     if verbose and quiet:
         raise click.UsageError("Cannot use --verbose and --quiet together")
+
+    # Configure logging based on flags
+    if quiet:
+        logging_level = logging.ERROR
+    elif verbose:
+        logging_level = logging.DEBUG
+    else:
+        logging_level = logging.INFO
+
+    logging.basicConfig(
+        level=logging_level,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
     # Set output directory
     output_path = output_dir or Path('PyHIV_results')
@@ -128,7 +149,8 @@ def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet):
             subtyping=subtyping,
             splitting=splitting,
             output_dir=str(output_dir) if output_dir else None,
-            n_jobs=n_jobs
+            n_jobs=n_jobs,
+            reporting=reporting
         )
 
         elapsed_time = time.time() - start_time
@@ -151,6 +173,12 @@ def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet):
                 click.echo(f"  • {af}")
             if len(alignment_files) > 3:
                 click.echo(f"  • ... and {len(alignment_files) - 3} more alignment file(s)")
+            
+            # Show PDF report if generated
+            if reporting:
+                pdf_report = output_path / 'PyHIV_report_all_sequences.pdf'
+                if pdf_report.exists(): # pragma: no cover
+                    click.echo(f"  • {pdf_report}")
 
     except ImportError as e:
         click.secho(f"Error: Could not import PyHIV module: {e}", fg='red', err=True)

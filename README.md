@@ -80,19 +80,21 @@ PyHIV(
     subtyping=True,
     splitting=True,
     output_dir="results_folder",
-    n_jobs=4
+    n_jobs=4,
+    reporting=True
 )
 ```
 
 ### Parameters:
 
 | Parameter    | Type   | Default           | Description                                                                |
-| ------------ | ------ | ----------------- | -------------------------------------------------------------------------- |
+| ------------ | ------ |-------------------| -------------------------------------------------------------------------- |
 | `fastas_dir` | `str`  | *Required*        | Directory containing user FASTA files.                                     |
 | `subtyping`  | `bool` | `True`            | Aligns against subtype reference genomes. If `False`, aligns only to HXB2. |
 | `splitting`  | `bool` | `True`            | Splits aligned sequences into gene regions.                                |
 | `output_dir` | `str`  | `"PyHIV_results"` | Output directory for results.                                              |
 | `n_jobs`     | `int`  | `None`            | Number of parallel jobs for alignment.                                     |
+| `reporting`  | `bool` | `True`            | Generates PDF report with sequence visualizations.                         |
 
 ### 📂 Output Structure
 
@@ -103,6 +105,7 @@ PyHIV_results/
 │
 ├── best_alignment_<sequence>.fasta     # Alignment to best reference
 ├── final_table.tsv                     # Summary of results
+├── PyHIV_report_all_sequences.pdf     # PDF report (if reporting=True)
 │
 ├── gag/
 │   ├── <sequence>_gag.fasta
