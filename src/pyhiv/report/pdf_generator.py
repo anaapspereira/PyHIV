@@ -22,9 +22,7 @@ def render_sequence_page(
     mm_region: str,
     present_regions: List[str],
     features_aln: Dict[str, Tuple[int, int]],
-    ref_header: str, # TODO: unused?
     ref_seq_aligned: str,
-    user_header: str, # TODO: unused?
     user_seq_aligned: str,
     y_positions: Optional[Dict[str, float]] = None
 ):
@@ -87,14 +85,14 @@ def render_sequence_page(
     # Bottom: gene panel (full width)
     ax_map = fig.add_subplot(gs[1, 0])
 
-    a_start, a_end = first_last_nongap_idx(user_seq_aligned)  # alignment columns of the user's non-gap span
+    a_start, a_end = first_last_nongap_idx(user_seq_aligned)
 
     plot_gene_axes(
         ax=ax_map,
-        genes_ranges=features_aln,     # already in ALIGNMENT coordinates
+        genes_ranges=features_aln,
         alignment_start=a_start,
         alignment_end=a_end,
-        y_positions=y_positions,       # fixed dict (K03455) or None for auto lanes
+        y_positions=y_positions,
     )
 
     pdf.savefig(fig)
