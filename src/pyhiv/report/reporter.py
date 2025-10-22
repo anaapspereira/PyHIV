@@ -21,7 +21,7 @@ from pyhiv.report.utils import (
 class PyHIVReporter:
     """Main class for generating PyHIV PDF reports."""
     
-    def __init__(self, output_dir: Path, subtyping: bool, log_level=logging.INFO):
+    def __init__(self, output_dir: Path, subtyping: bool, splitting: bool, log_level=logging.INFO):
         """
         Initialize the reporter with output directory and logger.
 
@@ -31,6 +31,8 @@ class PyHIVReporter:
             Directory to save the generated PDF report.
         subtyping : bool
             Whether subtyping was performed.
+        splitting : bool
+            Whether splitting was performed.
         log_level : int, optional
             Logging level, by default logging.INFO
         """
@@ -38,6 +40,7 @@ class PyHIVReporter:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.subtyping = subtyping
+        self.splitting = splitting
 
         # Configure logger
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -142,6 +145,9 @@ class PyHIVReporter:
 
                 if not self.subtyping:
                     subtype = "No subtyping performed."
+                if not self.splitting:
+                    mm_region = "-"
+                    present_regions = []
                 render_sequence_page(
                     pdf=pdf,
                     sequence=sequence,

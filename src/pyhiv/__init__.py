@@ -113,7 +113,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     # Generate PDF report if requested
     if reporting:
         try:
-            reporter = PyHIVReporter(output_dir, subtyping=subtyping)
+            reporter = PyHIVReporter(output_dir, subtyping=subtyping, splitting=splitting)
             sequences_with_locations_path = paths["SEQUENCES_WITH_LOCATION"]
             pdf_path = reporter.generate_report(
                 final_table_path=output_dir / 'final_table.tsv',
