@@ -33,7 +33,8 @@ class TestPyHIV(TestCase):
             subtyping=True,
             splitting=True,
             output_dir=str(self.output_dir),
-            n_jobs=12
+            n_jobs=12,
+            reporting=True,
         )
 
         # Check that best alignment files are created

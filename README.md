@@ -80,19 +80,21 @@ PyHIV(
     subtyping=True,
     splitting=True,
     output_dir="results_folder",
-    n_jobs=4
+    n_jobs=4,
+    reporting=True
 )
 ```
 
 ### Parameters:
 
 | Parameter    | Type   | Default           | Description                                                                |
-| ------------ | ------ | ----------------- | -------------------------------------------------------------------------- |
+| ------------ | ------ |-------------------| -------------------------------------------------------------------------- |
 | `fastas_dir` | `str`  | *Required*        | Directory containing user FASTA files.                                     |
 | `subtyping`  | `bool` | `True`            | Aligns against subtype reference genomes. If `False`, aligns only to HXB2. |
 | `splitting`  | `bool` | `True`            | Splits aligned sequences into gene regions.                                |
 | `output_dir` | `str`  | `"PyHIV_results"` | Output directory for results.                                              |
 | `n_jobs`     | `int`  | `None`            | Number of parallel jobs for alignment.                                     |
+| `reporting`  | `bool` | `True`            | Generates PDF report with sequence visualizations.                         |
 
 ### 📂 Output Structure
 
@@ -103,6 +105,7 @@ PyHIV_results/
 │
 ├── best_alignment_<sequence>.fasta     # Alignment to best reference
 ├── final_table.tsv                     # Summary of results
+├── PyHIV_report_all_sequences.pdf     # PDF report (if reporting=True)
 │
 ├── gag/
 │   ├── <sequence>_gag.fasta
@@ -125,6 +128,75 @@ PyHIV_results/
 | **Most Matching Gene Region** | Region with highest similarity                  |
 | **Present Gene Regions**      | All detected gene regions with valid alignments |
 
+
+---
+
+## 📟 Command Line Interface
+
+PyHIV provides a user-friendly CLI for HIV-1 sequence analysis.
+
+### 🚀 Getting Started
+
+```bash
+# Basic usage
+pyhiv run sequences/
+
+# With custom options
+pyhiv run sequences/ -o results/ -j 4 -v
+
+# Validate inputs first
+pyhiv validate sequences/
+```
+
+### ⚙️ Main Options
+
+| Option | Description |
+|--------|-------------|
+| `--subtyping` / `--no-subtyping` | Enable/disable HIV-1 subtyping (default: enabled) |
+| `--splitting` / `--no-splitting` | Enable/disable gene region splitting (default: enabled) |
+| `-o`, `--output-dir PATH` | Output directory (default: `PyHIV_results`) |
+| `-j`, `--n-jobs INTEGER` | Number of parallel jobs (default: all CPUs) |
+| `-v`, `--verbose` | Detailed output |
+| `-q`, `--quiet` | Suppress non-error output |
+
+### 💼 Common Use Cases
+
+**Full analysis with subtyping and splitting:**
+```bash
+pyhiv run data/sequences/
+```
+
+**Alignment only:**
+```bash
+pyhiv run data/sequences/ --no-subtyping --no-splitting
+```
+
+**Parallel processing:**
+```bash
+pyhiv run data/sequences/ -j 8 -o results/batch1/
+```
+
+**Validation:**
+```bash
+pyhiv validate data/sequences/
+```
+
+### 📤 Output
+
+PyHIV generates:
+- `final_table.tsv` - Summary with sequence IDs, references, subtypes, and gene regions
+- `best_alignment_*.fasta` - Best alignment for each sequence
+- Gene-specific folders (when `--splitting` is enabled) with extracted regions
+
+### 🆘 Getting Help
+
+```bash
+pyhiv --help           # Show all commands
+pyhiv run --help       # Show options for run command
+pyhiv --version        # Show version
+```
+
+For comprehensive documentation, see [CLI_README.md](CLI_README.md).
 
 ---
 

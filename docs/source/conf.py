@@ -3,32 +3,50 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-import os
-import sys
-sys.path.insert(0, os.path.abspath('../../src'))
-
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
+
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../../src/'))
 
 project = 'PyHIV'
 copyright = '2025, Ana Santos-Pereira; Joao Correia'
 author = 'Ana Santos-Pereira; Joao Correia'
-release = '0.0.1'
+release = '0.0.3'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',  # For Google/NumPy-style docstrings
-    'sphinx.ext.viewcode',
-    'myst_parser',          # Support for Markdown files
+    'sphinx.ext.napoleon',       # for Google/NumPy docstrings
+    'sphinx.ext.viewcode',       # links to source code
+    'sphinx.ext.autosummary',    # auto-generate module summaries
+    'myst_parser',               # Markdown support if needed
 ]
 
 templates_path = ['_templates']
 exclude_patterns = []
 
+# Autodoc settings
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'show-inheritance': True,
+}
+autodoc_typehints = "description"
+autodoc_mock_imports = [
+    # Mock heavy/optional deps so imports succeed on RTD
+    'pyfamsa',
+    'pandas',
+    'Bio',
+    'Bio.SeqRecord',
+    'click',
+]
 
+# Autosummary settings
+autosummary_generate = True
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

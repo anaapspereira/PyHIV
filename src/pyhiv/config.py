@@ -7,7 +7,7 @@ def get_reference_base_dir() -> Path:
     return Path(
         os.getenv(
             "REFERENCE_GENOMES_DIR",
-            Path(__file__).parent / "reference_genomes"
+            Path(__file__).parent / "loading" / "reference_genomes"
         )
     )
 

@@ -94,3 +94,16 @@ class TestReadFastas(TestCase):
         mock_info.assert_called_once()
         self.assertIn("Successfully read 1 sequences", mock_info.call_args[0][0])
 
+    @mock.patch("logging.warning")
+    def test_no_supported_fasta_files(self, mock_warning):
+        """Ensure line 37 is executed when directory contains files but none are FASTA."""
+        # Create some non-FASTA files
+        (self.input_path / "file1.txt").write_text("hello")
+        (self.input_path / "file2.csv").write_text("1,2,3")
+
+        result = read_input_fastas(self.input_path)
+        self.assertEqual(result, [])
+        # Check that the warning for no supported FASTA files was triggered
+        mock_warning.assert_called_once()
+        self.assertIn("No FASTA files with supported extensions found", mock_warning.call_args[0][0])
+
