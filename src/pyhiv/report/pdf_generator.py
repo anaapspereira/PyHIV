@@ -74,7 +74,7 @@ def render_sequence_page(
     meta_lines = [
         f"Sequence: {sequence}",
         f"Subtype: {subtype}",
-        f"Accession: {accession}",
+        f"Reference Accession: {accession}",
         f"Most matching region: {mm_region or '-'}",
         f"Present regions ({len(present_regions)}): {', '.join(present_regions) if present_regions else '-'}",
         f"Lengths — nt (no gaps) Ref|Seq: {ref_len_nt} | {usr_len_nt}",
