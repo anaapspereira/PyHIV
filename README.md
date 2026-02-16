@@ -26,6 +26,7 @@
 - [Output Structure](#-output-structure)
 - [Citation](#-citation)
 - [License](#-license)
+- [Funding](#-funding)
 
 ---
 
@@ -284,3 +285,9 @@ Please report bugs and request features through [GitHub Issues](https://github.c
 ## 🧾 License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 💰 Funding
+ 
+- AIV-Tropism project funded by 2CA-Braga / ICVS.
