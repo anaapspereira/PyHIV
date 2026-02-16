@@ -42,6 +42,7 @@ It produces:
 
 ---
 
+<a id="-how-it-works"></a>
 ## ⚙️ How It Works
 ```pgsql
 ┌─────────────────────────────────────────────┐
@@ -248,6 +249,7 @@ For comprehensive CLI documentation, see [CLI_README.md](CLI_README.md).
 
 ---
 
+<a id="-citation"></a>
 ## 🗂️ Citation
 
 If you use PyHIV in your research, please cite:
