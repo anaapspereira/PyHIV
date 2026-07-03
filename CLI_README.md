@@ -179,7 +179,7 @@ Optimize processing speed and resource usage.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `-j`, `--n-jobs INTEGER` | All CPUs | Number of parallel jobs for alignment |
-| `--alignment-tool [edlib-HW|edlib-NW|MAFFT|parasail-NW|PyFamsa]` | `parasail-NW` | Alignment backend |
+| `--alignment-tool [edlib-HW|MAFFT|parasail-NW|PyFamsa]` | `parasail-NW` | Alignment backend |
 
 **Examples:**
 ```bash

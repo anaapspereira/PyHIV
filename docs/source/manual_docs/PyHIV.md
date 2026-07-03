@@ -90,7 +90,7 @@ PyHIV(
 | `splitting`  | `bool` | `True`            | Splits aligned sequences into gene regions.                                |
 | `output_dir` | `str`  | `"PyHIV_results"` | Output directory for results.                                              |
 | `n_jobs`     | `int`  | `None`            | Number of parallel jobs for alignment.                                     |
-| `alignment_tool` | `str` | `"parasail-NW"` | Alignment backend: `parasail-NW`, `edlib-HW`, `edlib-NW`, `MAFFT`, or `PyFamsa`. |
+| `alignment_tool` | `str` | `"parasail-NW"` | Alignment backend: `parasail-NW`, `edlib-HW`, `MAFFT`, or `PyFamsa`. |
 
 `edlib`, `parasail`, and `PyFamsa` are installed with PyHIV. `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
 

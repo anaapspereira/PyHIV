@@ -84,7 +84,7 @@ Checks:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `-j`, `--n-jobs INTEGER` | All CPUs | Number of parallel jobs |
-| `--alignment-tool [edlib-HW|edlib-NW|MAFFT|parasail-NW|PyFamsa]` | `parasail-NW` | Alignment backend |
+| `--alignment-tool [edlib-HW|MAFFT|parasail-NW|PyFamsa]` | `parasail-NW` | Alignment backend |
 
 MAFFT can be configured with `PYHIV_MAFFT_BIN` or discovered as `mafft` on `PATH`.
 

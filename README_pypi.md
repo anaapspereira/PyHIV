@@ -97,7 +97,7 @@ PyHIV_results/
 - click
 - matplotlib
 
-PyHIV supports `parasail-NW` (default), `edlib-HW`, `edlib-NW`, `PyFamsa`, and `MAFFT` as alignment tool names. `MAFFT` requires an external `mafft` executable.
+PyHIV supports `parasail-NW` (default), `edlib-HW`, `PyFamsa`, and `MAFFT` as alignment tool names. `MAFFT` requires an external `mafft` executable.
 
 PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
 

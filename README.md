@@ -145,7 +145,7 @@ PyHIV(
 | `output_dir` | `str`  | `"PyHIV_results"` | Output directory for results.                                              |
 | `n_jobs`     | `int`  | `None`            | Number of parallel jobs for alignment.                                     |
 | `reporting`  | `bool` | `True`            | Generates PDF report with sequence visualizations.                         |
-| `alignment_tool` | `str` | `"parasail-NW"` | Alignment backend: `parasail-NW`, `edlib-HW`, `edlib-NW`, `MAFFT`, or `PyFamsa`. |
+| `alignment_tool` | `str` | `"parasail-NW"` | Alignment backend: `parasail-NW`, `edlib-HW`, `MAFFT`, or `PyFamsa`. |
 
 `edlib`, `parasail`, and `PyFamsa` are installed with PyHIV. `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
 
