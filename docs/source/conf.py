@@ -38,6 +38,8 @@ autodoc_default_options = {
 autodoc_typehints = "description"
 autodoc_mock_imports = [
     # Mock heavy/optional deps so imports succeed on RTD
+    'edlib',
+    'parasail',
     'pyfamsa',
     'pandas',
     'Bio',

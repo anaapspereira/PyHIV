@@ -60,9 +60,21 @@ class TestPyHIVCLI(TestCase):
             splitting=False,
             output_dir=str(self.output_dir),
             n_jobs=2,
-            reporting=True
+            reporting=True,
+            alignment_tool="parasail-NW"
         )
         self.assertIn(f"PyHIV v{__version__}", result.output)
+
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    @patch("pyhiv.PyHIV")
+    def test_run_cli_with_alignment_tool(self, mock_pyhiv):
+        """Test CLI passes selected alignment tool to PyHIV."""
+        result = self.runner.invoke(
+            cli, ["run", str(DATA_DIR), "--alignment-tool", "parasail-NW"]
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(mock_pyhiv.call_args.kwargs["alignment_tool"], "parasail-NW")
 
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
     @patch("pyhiv.PyHIV")

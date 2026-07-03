@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import time
 from pyhiv import __version__
+from pyhiv.align import DEFAULT_ALIGNMENT_TOOL, SUPPORTED_ALIGNMENT_TOOLS
 import logging
 
 SUPPORTED_FASTA_EXTENSIONS = {'.fasta', '.fa', '.fna', '.ffn'}
@@ -71,7 +72,14 @@ def count_fasta_files(directory):
     show_default=True,
     help='Enable or disable PDF report generation. When enabled, generates a PDF report with sequence visualizations.'
 )
-def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet, reporting):
+@click.option(
+    '--alignment-tool',
+    type=click.Choice(SUPPORTED_ALIGNMENT_TOOLS, case_sensitive=False),
+    default=DEFAULT_ALIGNMENT_TOOL,
+    show_default=True,
+    help='Alignment tool to use.'
+)
+def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet, reporting, alignment_tool):
     """
     PyHIV: HIV-1 sequence alignment, subtyping, and gene region splitting tool.
 
@@ -93,6 +101,9 @@ def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet, r
 
         # Quiet mode (only show errors)
         pyhiv /path/to/fastas/ -q
+
+        # Select an alignment tool
+        pyhiv /path/to/fastas/ --alignment-tool parasail-NW
     """
 
     # Handle conflicting flags
@@ -133,6 +144,7 @@ def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet, r
         click.echo(f"Found {num_files} FASTA file(s)")
         click.echo(f"Subtyping: {'enabled' if subtyping else 'disabled'}")
         click.echo(f"Splitting: {'enabled' if splitting else 'disabled'}")
+        click.echo(f"Alignment tool: {alignment_tool}")
         click.echo(f"Output directory: {output_path}")
         click.echo(f"Parallel jobs: {n_jobs or 'auto (all CPUs)'}")
         click.echo()
@@ -150,7 +162,8 @@ def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet, r
             splitting=splitting,
             output_dir=str(output_dir) if output_dir else None,
             n_jobs=n_jobs,
-            reporting=reporting
+            reporting=reporting,
+            alignment_tool=alignment_tool
         )
 
         elapsed_time = time.time() - start_time

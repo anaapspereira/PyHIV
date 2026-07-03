@@ -26,7 +26,7 @@ class TestCalculateAlignmentScore(TestCase):
 
 class TestProcessAlignment(TestCase):
     @mock.patch("pyhiv.align.align_with_reference.calculate_alignment_score", return_value=42)
-    @mock.patch("pyhiv.align.align_with_reference.pyfamsa_align", return_value=("AAA", "AAA"))
+    @mock.patch("pyhiv.align.align_with_reference.align_sequences", return_value=("AAA", "AAA"))
     def test_process_alignment_success(self, mock_align, mock_score):
         """Should return tuple with score, test, ref, and name."""
         test_seq = SeqRecord(Seq("AAA"), id="test")
@@ -35,11 +35,11 @@ class TestProcessAlignment(TestCase):
 
         result = alignment.process_alignment(test_seq, ref_seq)
         self.assertEqual(result, (42, "AAA", "AAA", "REF1"))
-        mock_align.assert_called_once()
+        mock_align.assert_called_once_with(test_seq, ref_seq, alignment.DEFAULT_ALIGNMENT_TOOL)
         mock_score.assert_called_once()
 
     @mock.patch("logging.error")
-    @mock.patch("pyhiv.align.align_with_reference.pyfamsa_align", side_effect=Exception("boom"))
+    @mock.patch("pyhiv.align.align_with_reference.align_sequences", side_effect=Exception("boom"))
     def test_process_alignment_failure(self, mock_align, mock_log):
         """Should log error and return None when alignment fails."""
         test_seq = SeqRecord(Seq("AAA"), id="test")
@@ -50,6 +50,19 @@ class TestProcessAlignment(TestCase):
         self.assertIsNone(result)
         mock_log.assert_called_once()
         self.assertIn("Failed to process REF1", mock_log.call_args[0][0])
+
+    @mock.patch("pyhiv.align.align_with_reference.calculate_alignment_score", return_value=42)
+    @mock.patch("pyhiv.align.align_with_reference.align_sequences", return_value=("AAA", "AAA"))
+    def test_process_alignment_uses_selected_tool(self, mock_align, mock_score):
+        """Should pass the selected alignment tool to the dispatcher."""
+        test_seq = SeqRecord(Seq("AAA"), id="test")
+        ref_seq = SeqRecord(Seq("AAA"), id="ref")
+        ref_seq.name = "REF1"
+
+        result = alignment.process_alignment(test_seq, ref_seq, alignment_tool="PyFamsa")
+
+        self.assertEqual(result, (42, "AAA", "AAA", "REF1"))
+        mock_align.assert_called_once_with(test_seq, ref_seq, "PyFamsa")
 
 
 class TestAlignWithReferences(TestCase):

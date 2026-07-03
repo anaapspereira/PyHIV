@@ -97,6 +97,8 @@ pip install -e ".[dev]"
 - Python 3.10+
 - pandas
 - biopython
+- edlib
+- parasail
 - pyfamsa
 - click
 - matplotlib
@@ -128,7 +130,8 @@ PyHIV(
     splitting=True,
     output_dir="results_folder",
     n_jobs=4,
-    reporting=True
+    reporting=True,
+    alignment_tool="parasail-NW"
 )
 ```
 
@@ -142,6 +145,11 @@ PyHIV(
 | `output_dir` | `str`  | `"PyHIV_results"` | Output directory for results.                                              |
 | `n_jobs`     | `int`  | `None`            | Number of parallel jobs for alignment.                                     |
 | `reporting`  | `bool` | `True`            | Generates PDF report with sequence visualizations.                         |
+| `alignment_tool` | `str` | `"parasail-NW"` | Alignment backend: `parasail-NW`, `edlib-HW`, `edlib-NW`, `MAFFT`, or `PyFamsa`. |
+
+`edlib`, `parasail`, and `PyFamsa` are installed with PyHIV. `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
+
+Input sequences longer than 12000 nucleotides are skipped with this warning: `The submitted sequence is longer than the HIV-1 genome.`
 
 ### 📂 Output Structure
 

@@ -11,10 +11,15 @@ from pyhiv.split import get_gene_region, get_present_gene_regions, map_ref_coord
 from pyhiv.report import PyHIVReporter
 import logging
 
+from pyhiv.align import DEFAULT_ALIGNMENT_TOOL
+
 FINAL_TABLE_COLUMNS = ['Sequence', 'Reference', 'Subtype', 'Most Matching Gene Region', 'Present Gene Regions']
+MAX_HIV1_SEQUENCE_LENGTH = 12000
+SEQUENCE_TOO_LONG_WARNING = "The submitted sequence is longer than the HIV-1 genome."
 
 def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
-          output_dir: str = None, n_jobs: int = None, reporting: bool = True):
+          output_dir: str = None, n_jobs: int = None, reporting: bool = True,
+          alignment_tool: str = DEFAULT_ALIGNMENT_TOOL):
     """
     Main function to run the PyHIV pipeline.
     It aligns the user sequences with the reference sequences and saves the
@@ -23,6 +28,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     If splitting is True, it splits the user sequences into gene regions
     and saves them in specific folders. It also saves a final table with the results.
     If reporting is True, it generates a PDF report with visualizations.
+    alignment_tool selects the alignment backend. Defaults to parasail-NW.
     """
     paths = get_reference_paths()
     validate_reference_paths(paths)
@@ -37,17 +43,27 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     final_table = pd.DataFrame(columns=FINAL_TABLE_COLUMNS)
 
     for fasta in user_fastas:
+        sequence_name = fasta.id
+        sequence_length = len(str(fasta.seq).replace("-", ""))
+        if sequence_length > MAX_HIV1_SEQUENCE_LENGTH:
+            logging.warning("%s Skipping sequence '%s'.", SEQUENCE_TOO_LONG_WARNING, sequence_name)
+            continue
+
         reference_dir = (
             paths["REFERENCE_GENOMES_FASTAS_DIR"]
             if subtyping else
             paths["HXB2_GENOME_FASTA_DIR"]
         )
-        best_alignment = align_with_references(fasta, references_dir=reference_dir, n_jobs=n_jobs)
+        best_alignment = align_with_references(
+            fasta,
+            references_dir=reference_dir,
+            n_jobs=n_jobs,
+            alignment_tool=alignment_tool,
+        )
 
         if best_alignment is None:
             continue
 
-        sequence_name = fasta.id
         test_aligned, ref_aligned, ref_file = best_alignment
 
 

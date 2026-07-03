@@ -179,6 +179,7 @@ Optimize processing speed and resource usage.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `-j`, `--n-jobs INTEGER` | All CPUs | Number of parallel jobs for alignment |
+| `--alignment-tool [edlib-HW|edlib-NW|MAFFT|parasail-NW|PyFamsa]` | `parasail-NW` | Alignment backend |
 
 **Examples:**
 ```bash
@@ -188,9 +189,16 @@ pyhiv run sequences/
 # Limit to 4 cores
 pyhiv run sequences/ -j 4
 
+# Use PyFamsa instead of the default parasail-NW
+pyhiv run sequences/ --alignment-tool PyFamsa
+
 # Single-threaded processing
 pyhiv run sequences/ -j 1
 ```
+
+`edlib`, `parasail`, and `PyFamsa` are installed with PyHIV. `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
+
+Sequences longer than 12000 nucleotides are skipped with this warning: `The submitted sequence is longer than the HIV-1 genome.`
 
 ### 📺 Display Options
 

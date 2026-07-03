@@ -84,6 +84,11 @@ Checks:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `-j`, `--n-jobs INTEGER` | All CPUs | Number of parallel jobs |
+| `--alignment-tool [edlib-HW|edlib-NW|MAFFT|parasail-NW|PyFamsa]` | `parasail-NW` | Alignment backend |
+
+MAFFT can be configured with `PYHIV_MAFFT_BIN` or discovered as `mafft` on `PATH`.
+
+Sequences longer than 12000 nucleotides are skipped with this warning: `The submitted sequence is longer than the HIV-1 genome.`
 
 ### Display Options
 

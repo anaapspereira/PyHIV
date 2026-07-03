@@ -4,8 +4,10 @@ import shutil
 from unittest.mock import patch
 
 import pandas as pd
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
-from pyhiv import PyHIV
+from pyhiv import PyHIV, SEQUENCE_TOO_LONG_WARNING
 from tests import TEST_DIR
 
 DATA_DIR = TEST_DIR / "data" / "fastas"
@@ -35,6 +37,7 @@ class TestPyHIV(TestCase):
             output_dir=str(self.output_dir),
             n_jobs=12,
             reporting=True,
+            alignment_tool="PyFamsa",
         )
 
         # Check that best alignment files are created
@@ -59,7 +62,8 @@ class TestPyHIV(TestCase):
             subtyping=True,
             splitting=False,
             output_dir=str(self.output_dir),
-            n_jobs=1
+            n_jobs=1,
+            alignment_tool="PyFamsa",
         )
 
         table_file = self.output_dir / "final_table.tsv"
@@ -91,3 +95,40 @@ class TestPyHIV(TestCase):
         self.assertTrue(table_file.exists())
         table = pd.read_csv(table_file, sep='\t')
         self.assertEqual(len(table), 0)  # No rows because no alignments succeeded
+
+    @patch("pyhiv.align_with_references")
+    @patch("pyhiv.read_input_fastas")
+    @patch("pyhiv.validate_reference_paths")
+    @patch("pyhiv.get_reference_paths")
+    @patch("logging.warning")
+    def test_sequence_longer_than_hiv_genome_is_skipped(
+        self,
+        mock_warning,
+        mock_paths,
+        mock_validate,
+        mock_read_fastas,
+        mock_align,
+    ):
+        """Sequences with more than 12000 nt should be skipped before alignment."""
+        mock_paths.return_value = {
+            "SEQUENCES_WITH_LOCATION": REFERENCE_BASE / "sequences_with_locations.tsv",
+            "REFERENCE_GENOMES_FASTAS_DIR": REFERENCE_BASE / "reference_fastas",
+            "HXB2_GENOME_FASTA_DIR": REFERENCE_BASE / "HXB2_fasta",
+        }
+        mock_read_fastas.return_value = [SeqRecord(Seq("A" * 12001), id="too_long")]
+
+        PyHIV(
+            fastas_dir=str(DATA_DIR),
+            output_dir=str(self.output_dir),
+            reporting=False,
+        )
+
+        mock_validate.assert_called_once()
+        mock_align.assert_not_called()
+        mock_warning.assert_called_once()
+        self.assertEqual(mock_warning.call_args[0][1], SEQUENCE_TOO_LONG_WARNING)
+
+        table_file = Path(self.output_dir) / "final_table.tsv"
+        self.assertTrue(table_file.exists())
+        table = pd.read_csv(table_file, sep='\t')
+        self.assertEqual(len(table), 0)

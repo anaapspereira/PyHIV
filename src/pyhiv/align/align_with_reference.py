@@ -5,7 +5,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional, Tuple, List
 
-from pyhiv.align.famsa import pyfamsa_align
+from pyhiv.align.tools import DEFAULT_ALIGNMENT_TOOL, align_sequences
 from pyhiv.loading import REFERENCE_GENOMES_FASTAS_DIR
 
 try:
@@ -14,7 +14,11 @@ try:
 except ImportError: # pragma: no cover
     raise ImportError("BioPython is required for this module. Please install it via 'pip install biopython'.")
 
-def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple[int, str, str, str]]:
+def process_alignment(
+    test_seq: SeqRecord,
+    ref_seq: SeqRecord,
+    alignment_tool: str = DEFAULT_ALIGNMENT_TOOL,
+) -> Optional[Tuple[int, str, str, str]]:
     """
     Aligns test sequence with a reference sequence and calculates the score.
 
@@ -31,7 +35,7 @@ def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple
         A tuple containing the alignment score, the aligned test sequence, the aligned reference sequence, and the reference sequence name.
     """
     try:
-        test_aligned, ref_aligned = pyfamsa_align(test_seq, ref_seq)
+        test_aligned, ref_aligned = align_sequences(test_seq, ref_seq, alignment_tool)
         score = calculate_alignment_score(test_aligned, ref_aligned)
         return score, test_aligned, ref_aligned, ref_seq.name
     except Exception as e:
@@ -40,7 +44,8 @@ def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple
 
 def align_with_references(test_sequence: SeqRecord,
                           references_dir: Optional[Path] = None,
-                          n_jobs: Optional[int] = None) -> Optional[Tuple[str, str, str]]:
+                          n_jobs: Optional[int] = None,
+                          alignment_tool: str = DEFAULT_ALIGNMENT_TOOL) -> Optional[Tuple[str, str, str]]:
     """
     Aligns a test sequence with reference sequences in parallel and returns the best match.
 
@@ -53,6 +58,8 @@ def align_with_references(test_sequence: SeqRecord,
         reference genomes for HIV-1 subtyping.
     n_jobs: int, optional
         Number of worker processes to use for parallel processing. Defaults to using all available CPU cores.
+    alignment_tool: str, optional
+        Alignment tool to use. Defaults to parasail-NW.
 
     Returns
     -------
@@ -83,7 +90,10 @@ def align_with_references(test_sequence: SeqRecord,
     best_score = float('-inf')
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        futures = {executor.submit(process_alignment, test_sequence, ref): ref for ref in ref_sequences}
+        futures = {
+            executor.submit(process_alignment, test_sequence, ref, alignment_tool): ref
+            for ref in ref_sequences
+        }
 
         for future in as_completed(futures):
             result = future.result()
