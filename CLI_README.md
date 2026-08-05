@@ -179,7 +179,10 @@ Optimize processing speed and resource usage.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `-j`, `--n-jobs INTEGER` | All CPUs | Number of parallel jobs for alignment |
-| `--alignment-tool [edlib-HW|MAFFT|parasail-NW|PyFamsa]` | `parasail-NW` | Alignment backend |
+| `--alignment-tool [edlib-HW|MAFFT|parasail-NW|PyFamsa|parasail]` | `edlib-HW` | Alignment backend |
+| `--kmer-size INTEGER` | `15` | K-mer size used to prefilter candidate references |
+| `--reference-top-k INTEGER` | `30` | Number of top k-mer ranked references to align; use `0` to align all references |
+| `--reference-groups TEXT` | `M` | Comma-separated HIV-1 reference groups used for subtyping; use `M,N,O,P` to include groups N, O, and P |
 
 **Examples:**
 ```bash
@@ -189,14 +192,22 @@ pyhiv run sequences/
 # Limit to 4 cores
 pyhiv run sequences/ -j 4
 
-# Use PyFamsa instead of the default parasail-NW
+# Use PyFamsa instead of the default edlib-HW
 pyhiv run sequences/ --alignment-tool PyFamsa
+
+# Align only the 10 references with the highest k-mer containment
+pyhiv run sequences/ --reference-top-k 10
+
+# Include reference groups N, O, and P in addition to the default group M
+pyhiv run sequences/ --reference-groups M,N,O,P
 
 # Single-threaded processing
 pyhiv run sequences/ -j 1
 ```
 
-`edlib`, `parasail`, and `PyFamsa` are installed with PyHIV. `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
+`edlib-HW` is the default and projects alignments onto full-reference genome coordinates. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` remain available through `--alignment-tool`. `edlib`, `parasail`, and `PyFamsa` are installed with PyHIV. `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
+
+Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `--reference-top-k 0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; use `--reference-groups M,N,O,P` to include groups N, O, and P.
 
 Sequences longer than 12000 nucleotides are skipped with this warning: `The submitted sequence is longer than the HIV-1 genome.`
 
@@ -337,15 +348,17 @@ Summary table with columns:
 |--------|-------------|
 | Sequence | Input sequence ID |
 | Reference | Best matching reference accession |
+| Group | HIV-1 reference group |
 | Subtype | HIV-1 subtype (if `--subtyping` enabled) |
+| Closest Subtypes | Top 3 closest unique group/subtype calls by alignment score |
 | Most Matching Gene Region | Gene with most matches |
 | Present Gene Regions | All detected gene regions |
 
 **Example:**
 ```
-Sequence    Reference    Subtype    Most Matching Gene Region    Present Gene Regions
-seq001      K03455       B          pol                          gag, pol, env
-seq002      AF004885     C          env                          pol, env
+Sequence    Reference    Group    Subtype    Closest Subtypes                                  Most Matching Gene Region    Present Gene Regions
+seq001      K03455       M        B          M:B (score=9120); M:C (score=8894); M:A1 (...)   pol                          gag, pol, env
+seq002      AF004885     M        C          M:C (score=9015); M:B (score=8801); M:A1 (...)   env                          pol, env
 ```
 
 #### Alignment Files
@@ -398,7 +411,7 @@ python -c "import pandas as pd; df = pd.read_csv('results/final_table.tsv', sep=
 **Filter by subtype:**
 ```bash
 pyhiv run sequences/ -o results/ -v
-awk -F'\t' '$3 == "B"' results/final_table.tsv > subtype_B.tsv
+awk -F'\t' '$4 == "B"' results/final_table.tsv > subtype_B.tsv
 ```
 
 ## 🛠️ Troubleshooting

@@ -25,14 +25,18 @@ class TestPyHIVReporter(TestCase):
             {
                 "Sequence": "seq1",
                 "Reference": "ref1",
+                "Group": "M",
                 "Subtype": "B",
+                "Closest Subtypes": "M:B (score=100); M:C (score=95)",
                 "Most Matching Gene Region": "gag",
                 "Present Gene Regions": "gag, pol",
             },
             {
                 "Sequence": "seq2",
                 "Reference": "ref2",
+                "Group": "M",
                 "Subtype": "C",
+                "Closest Subtypes": "M:C (score=100); M:B (score=95)",
                 "Most Matching Gene Region": "env",
                 "Present Gene Regions": "env, nef",
             }
@@ -94,6 +98,8 @@ class TestPyHIVReporter(TestCase):
         # Assertions
         mock_path.assert_called()
         mock_render.assert_called()
+        self.assertEqual(mock_render.call_args.kwargs["group"], "M")
+        self.assertEqual(mock_render.call_args.kwargs["closest_subtypes"], "M:C (score=100); M:B (score=95)")
         self.assertTrue(out_path.exists() or out_path.name.endswith(".pdf"))
         self.assertTrue(isinstance(out_path, Path))
         pdf_context is not None
@@ -181,7 +187,9 @@ class TestPyHIVReporter(TestCase):
             {
                 "Sequence": "seq1",
                 "Reference": "ref1",
+                "Group": "M",
                 "Subtype": "B",
+                "Closest Subtypes": "M:B (score=100)",
                 "Most Matching Gene Region": "gag",
                 "Present Gene Regions": "gag, pol",
             }

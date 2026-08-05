@@ -24,7 +24,9 @@ class TestReportingIntegration(TestCase):
                     {
                         "Sequence": "seq1",
                         "Reference": "K03455",
+                        "Group": "M",
                         "Subtype": "B",
+                        "Closest Subtypes": "M:B (score=120)",
                         "Most Matching Gene Region": "gag",
                         "Present Gene Regions": "['gag']",
                     }
@@ -59,5 +61,3 @@ class TestReportingIntegration(TestCase):
             )
 
             self.assertTrue(pdf_path.exists() and pdf_path.stat().st_size > 0)
-
-

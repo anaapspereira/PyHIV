@@ -61,7 +61,10 @@ class TestPyHIVCLI(TestCase):
             output_dir=str(self.output_dir),
             n_jobs=2,
             reporting=True,
-            alignment_tool="parasail-NW"
+            alignment_tool="edlib-HW",
+            kmer_size=15,
+            reference_top_k=30,
+            reference_groups="M",
         )
         self.assertIn(f"PyHIV v{__version__}", result.output)
 
@@ -75,6 +78,54 @@ class TestPyHIVCLI(TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertEqual(mock_pyhiv.call_args.kwargs["alignment_tool"], "parasail-NW")
+
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    @patch("pyhiv.PyHIV")
+    def test_run_cli_with_parasail_alias(self, mock_pyhiv):
+        """Test CLI accepts parasail as a shorthand alignment tool name."""
+        result = self.runner.invoke(
+            cli, ["run", str(DATA_DIR), "--alignment-tool", "parasail"]
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(mock_pyhiv.call_args.kwargs["alignment_tool"], "parasail")
+
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    @patch("pyhiv.PyHIV")
+    def test_run_cli_with_kmer_options(self, mock_pyhiv):
+        """Test CLI passes k-mer prefilter options to PyHIV."""
+        result = self.runner.invoke(
+            cli,
+            [
+                "run",
+                str(DATA_DIR),
+                "--kmer-size",
+                "11",
+                "--reference-top-k",
+                "5",
+            ],
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(mock_pyhiv.call_args.kwargs["kmer_size"], 11)
+        self.assertEqual(mock_pyhiv.call_args.kwargs["reference_top_k"], 5)
+
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    @patch("pyhiv.PyHIV")
+    def test_run_cli_with_reference_groups(self, mock_pyhiv):
+        """Test CLI passes selected reference groups to PyHIV."""
+        result = self.runner.invoke(
+            cli,
+            [
+                "run",
+                str(DATA_DIR),
+                "--reference-groups",
+                "M,N,O,P",
+            ],
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(mock_pyhiv.call_args.kwargs["reference_groups"], "M,N,O,P")
 
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
     @patch("pyhiv.PyHIV")

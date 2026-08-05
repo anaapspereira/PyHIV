@@ -56,7 +56,10 @@ PyHIV(
     output_dir="results_folder",
     n_jobs=4,
     reporting=True,
-    alignment_tool="parasail-NW"
+    alignment_tool="edlib-HW",
+    kmer_size=15,
+    reference_top_k=30,
+    reference_groups="M"
 )
 ```
 
@@ -64,6 +67,7 @@ PyHIV(
 
 - **Best reference alignment** per sequence
 - **Subtype and reference metadata**
+- **Ranked top 3 closest HIV-1 subtypes**
 - **Gene-region–specific FASTA files** (optional)
 - **Final summary table** (`final_table.tsv`)
 - **PDF reports** with sequence visualizations (optional)
@@ -97,7 +101,7 @@ PyHIV_results/
 - click
 - matplotlib
 
-PyHIV supports `parasail-NW` (default), `edlib-HW`, `PyFamsa`, and `MAFFT` as alignment tool names. `MAFFT` requires an external `mafft` executable.
+PyHIV supports `edlib-HW` (default), `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` as alignment tool names. `MAFFT` requires an external `mafft` executable. Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `reference_top_k=0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; set `reference_groups="M,N,O,P"` to include groups N, O, and P. The final table and PDF report include the best `Group`/`Subtype` call plus a ranked `Closest Subtypes` field with the top 3 closest unique group/subtype calls.
 
 PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
 

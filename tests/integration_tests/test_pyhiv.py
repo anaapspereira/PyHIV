@@ -7,7 +7,13 @@ import pandas as pd
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-from pyhiv import PyHIV, SEQUENCE_TOO_LONG_WARNING
+from pyhiv import (
+    PyHIV,
+    SEQUENCE_TOO_LONG_WARNING,
+    normalize_reference_groups,
+    selected_reference_accessions,
+    summarize_closest_subtypes,
+)
 from tests import TEST_DIR
 
 DATA_DIR = TEST_DIR / "data" / "fastas"
@@ -49,7 +55,8 @@ class TestPyHIV(TestCase):
         self.assertTrue(table_file.exists())
         table = pd.read_csv(table_file, sep='\t')
         expected_cols = [
-            'Sequence', 'Reference', 'Subtype', 'Most Matching Gene Region', 'Present Gene Regions'
+            'Sequence', 'Reference', 'Group', 'Subtype', 'Closest Subtypes',
+            'Most Matching Gene Region', 'Present Gene Regions'
         ]
         self.assertListEqual(list(table.columns), expected_cols)
         self.assertTrue(len(table) > 0)
@@ -71,7 +78,7 @@ class TestPyHIV(TestCase):
         table = pd.read_csv(table_file, sep='\t')
 
         # Columns specific to splitting should be dropped
-        self.assertListEqual(list(table.columns), ['Sequence', 'Reference', 'Subtype'])
+        self.assertListEqual(list(table.columns), ['Sequence', 'Reference', 'Group', 'Subtype', 'Closest Subtypes'])
 
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
     @patch("pyhiv.align_with_references", return_value=None)
@@ -125,10 +132,48 @@ class TestPyHIV(TestCase):
 
         mock_validate.assert_called_once()
         mock_align.assert_not_called()
-        mock_warning.assert_called_once()
-        self.assertEqual(mock_warning.call_args[0][1], SEQUENCE_TOO_LONG_WARNING)
+        warning_calls = [call_args[0] for call_args in mock_warning.call_args_list]
+        self.assertIn(
+            ("%s Skipping sequence '%s'.", SEQUENCE_TOO_LONG_WARNING, "too_long"),
+            warning_calls,
+        )
 
         table_file = Path(self.output_dir) / "final_table.tsv"
         self.assertTrue(table_file.exists())
         table = pd.read_csv(table_file, sep='\t')
         self.assertEqual(len(table), 0)
+
+    def test_normalize_reference_groups_accepts_comma_separated_groups(self):
+        self.assertEqual(normalize_reference_groups("M,N,O,P"), ("M", "N", "O", "P"))
+
+    def test_selected_reference_accessions_filters_by_group(self):
+        reference_sequences = pd.DataFrame([
+            {"accession": "acc_m", "group": "M"},
+            {"accession": "acc_o", "group": "O"},
+        ])
+
+        self.assertEqual(
+            selected_reference_accessions(reference_sequences, ("O",)),
+            {"acc_o"},
+        )
+
+    def test_summarize_closest_subtypes_returns_top_unique_subtypes(self):
+        metadata_by_accession = {
+            "acc_b1": {"group": "M", "subtype": "B"},
+            "acc_b2": {"group": "M", "subtype": "B"},
+            "acc_c": {"group": "M", "subtype": "C"},
+            "acc_o": {"group": "O", "subtype": "O"},
+        }
+
+        result = summarize_closest_subtypes(
+            [
+                (100, "acc_b1-B"),
+                (98, "acc_b2-B"),
+                (95, "acc_c-C"),
+                (90, "acc_o-O"),
+            ],
+            metadata_by_accession,
+            top_n=3,
+        )
+
+        self.assertEqual(result, "M:B (score=100); M:C (score=95); O:O (score=90)")

@@ -1,6 +1,14 @@
 from .famsa import pyfamsa_align
-from .align_with_reference import align_with_references, calculate_alignment_score, process_alignment
+from .align_with_reference import (
+    DEFAULT_KMER_SIZE,
+    DEFAULT_REFERENCE_TOP_K,
+    align_with_references,
+    calculate_alignment_score,
+    process_alignment,
+    reference_accession_from_name,
+)
 from .tools import (
+    ALIGNMENT_TOOL_CHOICES,
     DEFAULT_ALIGNMENT_TOOL,
     EDLIB_HW,
     MAFFT,

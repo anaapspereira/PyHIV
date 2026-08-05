@@ -5,8 +5,13 @@ import click
 from pathlib import Path
 import sys
 import time
-from pyhiv import __version__
-from pyhiv.align import DEFAULT_ALIGNMENT_TOOL, SUPPORTED_ALIGNMENT_TOOLS
+from pyhiv import DEFAULT_REFERENCE_GROUPS, __version__, normalize_reference_groups
+from pyhiv.align import (
+    ALIGNMENT_TOOL_CHOICES,
+    DEFAULT_ALIGNMENT_TOOL,
+    DEFAULT_KMER_SIZE,
+    DEFAULT_REFERENCE_TOP_K,
+)
 import logging
 
 SUPPORTED_FASTA_EXTENSIONS = {'.fasta', '.fa', '.fna', '.ffn'}
@@ -17,6 +22,28 @@ def validate_n_jobs(ctx, param, value):
     if value is not None and value < 1:
         raise click.BadParameter('must be at least 1')
     return value
+
+
+def validate_positive(ctx, param, value):
+    """Validate that an integer option is positive if provided."""
+    if value is not None and value < 1:
+        raise click.BadParameter('must be at least 1')
+    return value
+
+
+def validate_reference_top_k(ctx, param, value):
+    """Validate candidate reference limit. Zero disables k-mer shortlisting."""
+    if value is not None and value < 0:
+        raise click.BadParameter('must be at least 0')
+    return value
+
+
+def validate_reference_groups(ctx, param, value):
+    """Validate comma-separated HIV-1 reference groups."""
+    try:
+        return ",".join(normalize_reference_groups(value))
+    except ValueError as exc:
+        raise click.BadParameter(str(exc)) from exc
 
 
 def count_fasta_files(directory):
@@ -74,12 +101,48 @@ def count_fasta_files(directory):
 )
 @click.option(
     '--alignment-tool',
-    type=click.Choice(SUPPORTED_ALIGNMENT_TOOLS, case_sensitive=False),
+    type=click.Choice(ALIGNMENT_TOOL_CHOICES, case_sensitive=False),
     default=DEFAULT_ALIGNMENT_TOOL,
     show_default=True,
     help='Alignment tool to use.'
 )
-def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet, reporting, alignment_tool):
+@click.option(
+    '--kmer-size',
+    type=int,
+    default=DEFAULT_KMER_SIZE,
+    show_default=True,
+    callback=validate_positive,
+    help='K-mer size used to prefilter candidate references before alignment.'
+)
+@click.option(
+    '--reference-top-k',
+    type=int,
+    default=DEFAULT_REFERENCE_TOP_K,
+    show_default=True,
+    callback=validate_reference_top_k,
+    help='Number of top k-mer ranked references to align. Use 0 to align all references.'
+)
+@click.option(
+    '--reference-groups',
+    default=",".join(DEFAULT_REFERENCE_GROUPS),
+    show_default=True,
+    callback=validate_reference_groups,
+    help='Comma-separated HIV-1 reference groups used for subtyping. Use M,N,O,P to include all groups.'
+)
+def main(
+    fastas_dir,
+    subtyping,
+    splitting,
+    output_dir,
+    n_jobs,
+    verbose,
+    quiet,
+    reporting,
+    alignment_tool,
+    kmer_size,
+    reference_top_k,
+    reference_groups,
+):
     """
     PyHIV: HIV-1 sequence alignment, subtyping, and gene region splitting tool.
 
@@ -145,6 +208,9 @@ def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet, r
         click.echo(f"Subtyping: {'enabled' if subtyping else 'disabled'}")
         click.echo(f"Splitting: {'enabled' if splitting else 'disabled'}")
         click.echo(f"Alignment tool: {alignment_tool}")
+        click.echo(f"K-mer size: {kmer_size}")
+        click.echo(f"Reference top-k: {reference_top_k or 'all'}")
+        click.echo(f"Reference groups: {reference_groups}")
         click.echo(f"Output directory: {output_path}")
         click.echo(f"Parallel jobs: {n_jobs or 'auto (all CPUs)'}")
         click.echo()
@@ -163,7 +229,10 @@ def main(fastas_dir, subtyping, splitting, output_dir, n_jobs, verbose, quiet, r
             output_dir=str(output_dir) if output_dir else None,
             n_jobs=n_jobs,
             reporting=reporting,
-            alignment_tool=alignment_tool
+            alignment_tool=alignment_tool,
+            kmer_size=kmer_size,
+            reference_top_k=reference_top_k,
+            reference_groups=reference_groups,
         )
 
         elapsed_time = time.time() - start_time

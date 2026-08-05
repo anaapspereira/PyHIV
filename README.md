@@ -37,6 +37,7 @@
 It produces:
 - Best reference alignment per sequence  
 - Subtype and reference metadata  
+- Ranked top 3 closest HIV-1 subtypes
 - Gene-region–specific FASTA files (optional)  
 - A final summary table (`final_table.tsv`)  
 
@@ -131,7 +132,10 @@ PyHIV(
     output_dir="results_folder",
     n_jobs=4,
     reporting=True,
-    alignment_tool="parasail-NW"
+    alignment_tool="edlib-HW",
+    kmer_size=15,
+    reference_top_k=30,
+    reference_groups="M"
 )
 ```
 
@@ -145,9 +149,12 @@ PyHIV(
 | `output_dir` | `str`  | `"PyHIV_results"` | Output directory for results.                                              |
 | `n_jobs`     | `int`  | `None`            | Number of parallel jobs for alignment.                                     |
 | `reporting`  | `bool` | `True`            | Generates PDF report with sequence visualizations.                         |
-| `alignment_tool` | `str` | `"parasail-NW"` | Alignment backend: `parasail-NW`, `edlib-HW`, `MAFFT`, or `PyFamsa`. |
+| `alignment_tool` | `str` | `"edlib-HW"` | Alignment backend: `edlib-HW`, `parasail-NW`/`parasail`, `MAFFT`, or `PyFamsa`. |
+| `kmer_size` | `int` | `15` | K-mer size used to prefilter candidate references. |
+| `reference_top_k` | `int` | `30` | Number of top k-mer ranked references to align. Use `0` to align all references. |
+| `reference_groups` | `str` or iterable | `"M"` | HIV-1 reference groups used for subtyping. Use `"M,N,O,P"` to include groups N, O, and P. |
 
-`edlib`, `parasail`, and `PyFamsa` are installed with PyHIV. `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
+`edlib-HW` is the default and projects alignments onto full-reference genome coordinates. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` remain available as alternatives. Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `reference_top_k=0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; set `reference_groups="M,N,O,P"` to include groups N, O, and P. `edlib`, `parasail`, and `PyFamsa` are installed with PyHIV. `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
 
 Input sequences longer than 12000 nucleotides are skipped with this warning: `The submitted sequence is longer than the HIV-1 genome.`
 
@@ -179,7 +186,9 @@ PyHIV_results/
 | ----------------------------- | ----------------------------------------------- |
 | **Sequence**                  | Input sequence name                             |
 | **Reference**                 | Best matching reference accession               |
+| **Group**                     | Predicted HIV-1 reference group                 |
 | **Subtype**                   | Predicted HIV-1 subtype                         |
+| **Closest Subtypes**          | Top 3 closest group/subtype calls by alignment score |
 | **Most Matching Gene Region** | Region with highest similarity                  |
 | **Present Gene Regions**      | All detected gene regions with valid alignments |
 

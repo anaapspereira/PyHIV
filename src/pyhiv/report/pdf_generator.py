@@ -18,7 +18,9 @@ def render_sequence_page(
     pdf: PdfPages,
     sequence: str,
     accession: str,
+    group: str,
     subtype: str,
+    closest_subtypes: str,
     mm_region: str,
     present_regions: List[str],
     features_aln: Dict[str, Tuple[int, int]],
@@ -37,8 +39,12 @@ def render_sequence_page(
         The name or identifier of the sequence.
     accession : str
         The accession number of the sequence.
+    group : str
+        The HIV-1 reference group.
     subtype : str
         The subtype of the sequence.
+    closest_subtypes : str
+        Ranked summary of the closest HIV-1 subtypes.
     mm_region : str
         The most matching region of the sequence.
     present_regions : List[str]
@@ -71,7 +77,9 @@ def render_sequence_page(
 
     meta_lines = [
         f"Sequence: {sequence}",
+        f"Group: {group}",
         f"Subtype: {subtype}",
+        f"Closest subtypes: {closest_subtypes or '-'}",
         f"Reference Accession: {accession}",
         f"Most matching region: {mm_region or '-'}",
         f"Present regions ({len(present_regions)}): {', '.join(present_regions) if present_regions else '-'}",

@@ -65,6 +65,70 @@ class TestProcessAlignment(TestCase):
         mock_align.assert_called_once_with(test_seq, ref_seq, "PyFamsa")
 
 
+class TestKmerShortlist(TestCase):
+    def test_kmers_filters_ambiguous_bases_and_gaps(self):
+        self.assertEqual(alignment.kmers("AAC-GTN", 3), {"AAC"})
+
+    def test_kmer_shortlist_ranks_by_query_containment(self):
+        query = SeqRecord(Seq("AAAACCCCGGGG"), id="query")
+        ref_low = SeqRecord(Seq("TTTTAAAATTTT"), id="ref_low", name="ref_low")
+        ref_high = SeqRecord(Seq("GGGGAAAACCCC"), id="ref_high", name="ref_high")
+        ref_none = SeqRecord(Seq("TTTTTTTTTTTT"), id="ref_none", name="ref_none")
+
+        result = alignment.kmer_shortlist(
+            query,
+            [ref_low, ref_none, ref_high],
+            size=4,
+            top_k=2,
+        )
+
+        self.assertEqual([record.name for record in result], ["ref_high", "ref_low"])
+
+    def test_kmer_shortlist_can_be_disabled_with_non_positive_top_k(self):
+        references = [
+            SeqRecord(Seq("AAAA"), id="ref1", name="ref1"),
+            SeqRecord(Seq("CCCC"), id="ref2", name="ref2"),
+        ]
+
+        self.assertEqual(
+            alignment.kmer_shortlist(
+                SeqRecord(Seq("AAAA"), id="query"),
+                references,
+                size=2,
+                top_k=0,
+            ),
+            references,
+        )
+
+    def test_kmer_shortlist_uses_precomputed_reference_kmers(self):
+        query = SeqRecord(Seq("AAAA"), id="query")
+        ref1 = SeqRecord(Seq("CCCC"), id="ref1", name="ref1")
+        ref2 = SeqRecord(Seq("GGGG"), id="ref2", name="ref2")
+
+        result = alignment.kmer_shortlist(
+            query,
+            [ref1, ref2],
+            size=4,
+            top_k=1,
+            reference_kmers=[{"AAAA"}, set()],
+        )
+
+        self.assertEqual(result, [ref1])
+
+    def test_kmer_shortlist_rejects_mismatched_reference_kmers(self):
+        with self.assertRaises(ValueError):
+            alignment.kmer_shortlist(
+                SeqRecord(Seq("AAAA"), id="query"),
+                [
+                    SeqRecord(Seq("AAAA"), id="ref1"),
+                    SeqRecord(Seq("CCCC"), id="ref2"),
+                ],
+                size=4,
+                top_k=1,
+                reference_kmers=[],
+            )
+
+
 class TestAlignWithReferences(TestCase):
 
     def setUp(self):
@@ -139,6 +203,83 @@ class TestAlignWithReferences(TestCase):
 
         self.assertEqual(result, ("TEST2", "REF2", "refB"))
 
+    @mock.patch("pyhiv.align.align_with_reference.as_completed")
+    @mock.patch("pyhiv.align.align_with_reference.ProcessPoolExecutor")
+    @mock.patch("pyhiv.align.align_with_reference.SeqIO.parse")
+    def test_alignment_scores_can_be_returned(self, mock_parse, mock_executor, mock_as_completed):
+        fasta1 = self.ref_dir / "ref1.fasta"
+        fasta1.write_text(">ref1\nAAA\n")
+        fasta2 = self.ref_dir / "ref2.fasta"
+        fasta2.write_text(">ref2\nAAA\n")
+
+        ref1 = SeqRecord(Seq("AAA"), id="ref1")
+        ref2 = SeqRecord(Seq("AAA"), id="ref2")
+        mock_parse.side_effect = [[ref1], [ref2]]
+
+        class DummyFuture:
+            def __init__(self, result_value):
+                self._result_value = result_value
+
+            def result(self):
+                return self._result_value
+
+        dummy_futures = [
+            DummyFuture((5, "TEST", "REF", "refA")),
+            DummyFuture((10, "TEST2", "REF2", "refB")),
+        ]
+
+        dummy_executor = mock.MagicMock()
+        dummy_executor.__enter__.return_value = dummy_executor
+        dummy_executor.__exit__.return_value = False
+        mock_executor.return_value = dummy_executor
+        mock_as_completed.return_value = dummy_futures
+
+        result = alignment.align_with_references(
+            self.test_seq,
+            references_dir=self.ref_dir,
+            n_jobs=1,
+            include_alignment_scores=True,
+        )
+
+        self.assertEqual(result, ("TEST2", "REF2", "refB", [(10, "refB"), (5, "refA")]))
+
+    @mock.patch("pyhiv.align.align_with_reference.as_completed")
+    @mock.patch("pyhiv.align.align_with_reference.ProcessPoolExecutor")
+    def test_align_with_references_only_submits_kmer_shortlist(self, mock_executor, mock_as_completed):
+        fasta1 = self.ref_dir / "ref1.fasta"
+        fasta1.write_text(">ref1\nTTTTTTTTTT\n")
+        fasta2 = self.ref_dir / "ref2.fasta"
+        fasta2.write_text(">ref2\nAAAACCCCGG\n")
+        fasta3 = self.ref_dir / "ref3.fasta"
+        fasta3.write_text(">ref3\nCCCCGGGGTT\n")
+
+        class DummyFuture:
+            def __init__(self, result_value):
+                self._result_value = result_value
+
+            def result(self):
+                return self._result_value
+
+        dummy_executor = mock.MagicMock()
+        dummy_executor.__enter__.return_value = dummy_executor
+        dummy_executor.__exit__.return_value = False
+        dummy_executor.submit.return_value = DummyFuture((10, "TEST", "REF", "ref2"))
+        mock_executor.return_value = dummy_executor
+        mock_as_completed.return_value = [dummy_executor.submit.return_value]
+
+        result = alignment.align_with_references(
+            SeqRecord(Seq("AAAACCCC"), id="test"),
+            references_dir=self.ref_dir,
+            n_jobs=1,
+            kmer_size=4,
+            reference_top_k=1,
+        )
+
+        self.assertEqual(result, ("TEST", "REF", "ref2"))
+        self.assertEqual(dummy_executor.submit.call_count, 1)
+        submitted_ref = dummy_executor.submit.call_args.args[2]
+        self.assertEqual(submitted_ref.id, "ref2")
+
     @mock.patch("pyhiv.align.align_with_reference.SeqIO.parse", side_effect=Exception("bad parse"))
     @mock.patch("logging.error")
     def test_seqio_parse_error_logged(self, mock_log, mock_parse):
@@ -149,3 +290,33 @@ class TestAlignWithReferences(TestCase):
         result = alignment.align_with_references(self.test_seq, references_dir=self.ref_dir, n_jobs=1)
         self.assertIsNone(result)
         self.assertIn("No valid reference sequences found.", mock_log.call_args[0][0])
+
+    @mock.patch("pyhiv.align.align_with_reference.as_completed")
+    @mock.patch("pyhiv.align.align_with_reference.ProcessPoolExecutor")
+    def test_align_with_references_filters_reference_accessions(self, mock_executor, mock_as_completed):
+        (self.ref_dir / "keep-A1.fasta").write_text(">keep-A1\nAAA\n")
+        (self.ref_dir / "skip-B.fasta").write_text(">skip-B\nAAA\n")
+
+        class DummyFuture:
+            def result(self):
+                return (10, "TEST", "REF", "keep-A1")
+
+        dummy_future = DummyFuture()
+        dummy_executor = mock.MagicMock()
+        dummy_executor.__enter__.return_value = dummy_executor
+        dummy_executor.__exit__.return_value = False
+        dummy_executor.submit.return_value = dummy_future
+        mock_executor.return_value = dummy_executor
+        mock_as_completed.return_value = [dummy_future]
+
+        result = alignment.align_with_references(
+            self.test_seq,
+            references_dir=self.ref_dir,
+            n_jobs=1,
+            allowed_reference_accessions={"keep"},
+        )
+
+        self.assertEqual(result, ("TEST", "REF", "keep-A1"))
+        self.assertEqual(dummy_executor.submit.call_count, 1)
+        submitted_ref = dummy_executor.submit.call_args.args[2]
+        self.assertEqual(submitted_ref.id, "keep-A1")

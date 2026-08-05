@@ -19,7 +19,9 @@ class TestReportingPdfGenerator(TestCase):
                     pdf=pdf,
                     sequence="seq1",
                     accession="K03455",
+                    group="M",
                     subtype="B",
+                    closest_subtypes="M:B (score=120)",
                     mm_region="gag",
                     present_regions=["gag"],
                     features_aln={"gag": (10, 50)},
@@ -28,5 +30,3 @@ class TestReportingPdfGenerator(TestCase):
                     y_positions=None,
                 )
             self.assertTrue(pdf_path.exists() and pdf_path.stat().st_size > 0)
-
-
