@@ -104,6 +104,34 @@ class TestPyHIVReporter(TestCase):
         self.assertTrue(isinstance(out_path, Path))
         pdf_context is not None
 
+    @mock.patch("pyhiv.report.reporter.PdfPages")
+    @mock.patch("pyhiv.report.reporter.render_sequence_page")
+    @mock.patch("pyhiv.report.reporter.project_features_to_alignment", side_effect=lambda f, m: f)
+    @mock.patch("pyhiv.report.reporter.build_ref_to_alignment_map", return_value=({"A": 1}, None))
+    @mock.patch("pyhiv.report.reporter.is_special_reference", return_value=True)
+    @mock.patch("pyhiv.report.reporter.read_alignment_fasta")
+    @mock.patch("pyhiv.report.reporter.build_alignment_path")
+    @mock.patch("pyhiv.report.reporter.parse_features", return_value={"gag": (1, 10)})
+    @mock.patch("pyhiv.report.reporter.parse_present_regions", return_value=["gag"])
+    @mock.patch("pyhiv.report.reporter.normalize_features", return_value={"gag": (1, 10)})
+    @mock.patch("pyhiv.report.reporter.normalize_present_regions", return_value=["gag"])
+    def test_generate_report_no_subtyping_group_label(
+        self,
+        mock_norm_pr, mock_norm_feat, mock_pparser, mock_pf,
+        mock_path, mock_read_fa, mock_special, mock_map, mock_proj, mock_render, mock_pdf,
+    ):
+        reporter = PyHIVReporter(self.tmp_path, subtyping=False, splitting=True)
+        fake_fasta = self.tmp_path / "seq1.fasta"
+        fake_fasta.touch()
+        mock_path.return_value = fake_fasta
+        mock_read_fa.return_value = ("K03455-B", "AAA", "userheader", "TTT")
+
+        reporter.generate_report(self.final_table, self.sequences_with_locations)
+
+        mock_render.assert_called()
+        self.assertEqual(mock_render.call_args.kwargs["group"], "No subtyping performed.")
+        self.assertEqual(mock_render.call_args.kwargs["subtype"], "No subtyping performed.")
+
     # ---- Missing FASTA and read error ----
     @mock.patch("pyhiv.report.reporter.build_alignment_path")
     @mock.patch("pyhiv.report.reporter.read_alignment_fasta")

@@ -8,6 +8,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 from pyhiv import (
+    NO_SUBTYPING_LABEL,
     PyHIV,
     SEQUENCE_TOO_LONG_WARNING,
     normalize_reference_groups,
@@ -79,6 +80,25 @@ class TestPyHIV(TestCase):
 
         # Columns specific to splitting should be dropped
         self.assertListEqual(list(table.columns), ['Sequence', 'Reference', 'Group', 'Subtype', 'Closest Subtypes'])
+
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    def test_pyhiv_no_subtyping_uses_uniform_table_labels(self):
+        """HXB2 alignment should not report reference group/subtype as subtype results."""
+        PyHIV(
+            fastas_dir=str(DATA_DIR),
+            subtyping=False,
+            splitting=True,
+            output_dir=str(self.output_dir),
+            n_jobs=1,
+            reporting=False,
+            alignment_tool="PyFamsa",
+        )
+
+        table = pd.read_csv(self.output_dir / "final_table.tsv", sep='\t')
+        self.assertTrue(len(table) > 0)
+        self.assertTrue((table["Group"] == NO_SUBTYPING_LABEL).all())
+        self.assertTrue((table["Subtype"] == NO_SUBTYPING_LABEL).all())
+        self.assertTrue((table["Closest Subtypes"] == NO_SUBTYPING_LABEL).all())
 
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
     @patch("pyhiv.align_with_references", return_value=None)

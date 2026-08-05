@@ -113,7 +113,7 @@ class PyHIVReporter:
             for _, r in ft.iterrows():
                 sequence = str(r["Sequence"])
                 accession = str(r["Reference"])
-                group = str(r["Group"]) if "Group" in r else "Unknown"
+                group = str(r["Group"]) if self.subtyping and "Group" in r else "No subtyping performed."
                 subtype = str(r["Subtype"]) if self.subtyping else "No subtyping performed."
                 closest_subtypes = str(r["Closest Subtypes"]) if "Closest Subtypes" in r else "-"
                 mm_region = str(r["Most Matching Gene Region"]) if "Most Matching Gene Region" in r else "-"

@@ -33,6 +33,7 @@ SEQUENCE_TOO_LONG_WARNING = "The submitted sequence is longer than the HIV-1 gen
 DEFAULT_REFERENCE_GROUPS = ("M",)
 SUPPORTED_REFERENCE_GROUPS = ("M", "N", "O", "P")
 DEFAULT_CLOSEST_SUBTYPES_COUNT = 3
+NO_SUBTYPING_LABEL = "No subtyping performed."
 
 def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
           output_dir: str = None, n_jobs: int = None, reporting: bool = True,
@@ -104,17 +105,22 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
         # Extract reference information
         ref_file_parts = Path(ref_file).stem.split('-')
         accession = ref_file_parts[0]
-        reference_metadata = metadata_by_accession.get(accession, {})
-        group = reference_metadata.get("group", "Unknown")
-        subtype = reference_metadata.get(
-            "subtype",
-            ref_file_parts[1] if len(ref_file_parts) > 1 else "Unknown",
-        )
-        closest_subtypes = summarize_closest_subtypes(
-            alignment_scores,
-            metadata_by_accession,
-            top_n=DEFAULT_CLOSEST_SUBTYPES_COUNT,
-        ) if subtyping else "-"
+        if subtyping:
+            reference_metadata = metadata_by_accession.get(accession, {})
+            group = reference_metadata.get("group", "Unknown")
+            subtype = reference_metadata.get(
+                "subtype",
+                ref_file_parts[1] if len(ref_file_parts) > 1 else "Unknown",
+            )
+            closest_subtypes = summarize_closest_subtypes(
+                alignment_scores,
+                metadata_by_accession,
+                top_n=DEFAULT_CLOSEST_SUBTYPES_COUNT,
+            )
+        else:
+            group = NO_SUBTYPING_LABEL
+            subtype = NO_SUBTYPING_LABEL
+            closest_subtypes = NO_SUBTYPING_LABEL
 
         # Retrieve gene ranges
         gene_ranges = ast.literal_eval(
