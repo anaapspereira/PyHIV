@@ -44,8 +44,8 @@ class TestPyHIVCLI(TestCase):
         result = self.runner.invoke(
             cli, [
                 "run", str(DATA_DIR),
-                "--no-subtyping",
-                "--no-splitting",
+                "--subtyping", "false",
+                "--splitting", "false",
                 "-o", str(self.output_dir),
                 "-j", "2",
                 "--verbose",
@@ -125,6 +125,30 @@ class TestPyHIVCLI(TestCase):
         )
 
         self.assertEqual(result.exit_code, 0)
+        self.assertEqual(mock_pyhiv.call_args.kwargs["reference_groups"], "M,N,O,P")
+        self.assertTrue(mock_pyhiv.call_args.kwargs["subtyping"])
+
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    @patch("pyhiv.PyHIV")
+    def test_run_cli_with_explicit_true_boolean_options(self, mock_pyhiv):
+        """Test CLI accepts explicit true values for boolean options."""
+        result = self.runner.invoke(
+            cli,
+            [
+                "run",
+                str(DATA_DIR),
+                "--subtyping",
+                "true",
+                "--splitting",
+                "true",
+                "--reference-groups",
+                "M,N,O,P",
+            ],
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertTrue(mock_pyhiv.call_args.kwargs["subtyping"])
+        self.assertTrue(mock_pyhiv.call_args.kwargs["splitting"])
         self.assertEqual(mock_pyhiv.call_args.kwargs["reference_groups"], "M,N,O,P")
 
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})

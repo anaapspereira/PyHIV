@@ -59,16 +59,18 @@ def count_fasta_files(directory):
     required=True
 )
 @click.option(
-    '--subtyping/--no-subtyping',
+    '--subtyping',
+    type=click.BOOL,
     default=True,
     show_default=True,
-    help='Enable or disable HIV-1 subtyping. When enabled, aligns with reference genomes for subtype identification.'
+    help='Enable or disable HIV-1 subtyping. Use true/false. When enabled, aligns with reference genomes for subtype identification.'
 )
 @click.option(
-    '--splitting/--no-splitting',
+    '--splitting',
+    type=click.BOOL,
     default=True,
     show_default=True,
-    help='Enable or disable gene region splitting. When enabled, splits sequences into gene regions.'
+    help='Enable or disable gene region splitting. Use true/false. When enabled, splits sequences into gene regions.'
 )
 @click.option(
     '-o', '--output-dir',
@@ -154,13 +156,13 @@ def main(
         pyhiv /path/to/fastas/
 
         # Disable subtyping
-        pyhiv /path/to/fastas/ --no-subtyping
+        pyhiv /path/to/fastas/ --subtyping false
 
         # Custom output directory with 4 parallel jobs
         pyhiv /path/to/fastas/ -o results/ -j 4
 
         # Only alignment, no splitting
-        pyhiv /path/to/fastas/ --no-splitting
+        pyhiv /path/to/fastas/ --splitting false
 
         # Quiet mode (only show errors)
         pyhiv /path/to/fastas/ -q
