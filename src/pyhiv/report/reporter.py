@@ -113,6 +113,7 @@ class PyHIVReporter:
             for _, r in ft.iterrows():
                 sequence = str(r["Sequence"])
                 accession = str(r["Reference"])
+                splitting_accession = str(r.get("Splitting Reference", accession))
                 group = str(r["Group"]) if self.subtyping and "Group" in r else "No subtyping performed."
                 subtype = str(r["Subtype"]) if self.subtyping else "No subtyping performed."
                 closest_subtypes = str(r["Closest Subtypes"]) if "Closest Subtypes" in r else "-"
@@ -120,7 +121,12 @@ class PyHIVReporter:
                 present_regions_raw = parse_present_regions(r.get("Present Gene Regions", "")) if self.splitting else []
 
                 # Find alignment file
-                fasta_path = build_alignment_path(sequence, self.output_dir)
+                alignment_prefix = (
+                    "splitting_alignment"
+                    if self.splitting and splitting_accession not in {"", "-", accession}
+                    else "best_alignment"
+                )
+                fasta_path = build_alignment_path(sequence, self.output_dir, prefix=alignment_prefix)
                 if not fasta_path.exists():
                     self.logger.warning(f"Alignment FASTA not found for {sequence}: {fasta_path}")
                     continue
@@ -131,11 +137,11 @@ class PyHIVReporter:
                     self.logger.error(f"Error reading {fasta_path}: {e}")
                     continue
 
-                special = is_special_reference(accession, ref_header)
+                special = is_special_reference(splitting_accession, ref_header)
 
                 ref_map, _ = build_ref_to_alignment_map(ref_seq_aln)
 
-                raw_features = features_by_acc.get(accession, {})
+                raw_features = features_by_acc.get(splitting_accession, {})
                 features_genomic = normalize_features(raw_features, special)
                 present_regions = normalize_present_regions(present_regions_raw, special)
 
@@ -151,7 +157,7 @@ class PyHIVReporter:
                 render_sequence_page(
                     pdf=pdf,
                     sequence=sequence,
-                    accession=accession,
+                    accession=splitting_accession if self.splitting else accession,
                     group=group,
                     subtype=subtype,
                     closest_subtypes=closest_subtypes,

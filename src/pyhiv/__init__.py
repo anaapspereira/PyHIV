@@ -25,6 +25,19 @@ FINAL_TABLE_COLUMNS = [
     'Group',
     'Subtype',
     'Closest Subtypes',
+    'Splitting Reference',
+    'Most Matching Gene Region',
+    'Present Gene Regions',
+]
+FINAL_TABLE_BASE_COLUMNS = [
+    'Sequence',
+    'Reference',
+    'Group',
+    'Subtype',
+    'Closest Subtypes',
+]
+FINAL_TABLE_SPLITTING_COLUMNS = [
+    'Splitting Reference',
     'Most Matching Gene Region',
     'Present Gene Regions',
 ]
@@ -34,6 +47,27 @@ DEFAULT_REFERENCE_GROUPS = ("M",)
 SUPPORTED_REFERENCE_GROUPS = ("M", "N", "O", "P")
 DEFAULT_CLOSEST_SUBTYPES_COUNT = 3
 NO_SUBTYPING_LABEL = "No subtyping performed."
+SPLITTING_MODE_NONE = "none"
+SPLITTING_MODE_SUBTYPE = "subtype"
+SPLITTING_MODE_HXB2 = "hxb2"
+SPLITTING_ALIGNMENT_PREFIX = "splitting_alignment"
+SPLITTING_MODE_ALIASES = {
+    "0": SPLITTING_MODE_NONE,
+    "false": SPLITTING_MODE_NONE,
+    "no": SPLITTING_MODE_NONE,
+    "none": SPLITTING_MODE_NONE,
+    "off": SPLITTING_MODE_NONE,
+    "1": SPLITTING_MODE_SUBTYPE,
+    "true": SPLITTING_MODE_SUBTYPE,
+    "yes": SPLITTING_MODE_SUBTYPE,
+    "on": SPLITTING_MODE_SUBTYPE,
+    "subtype": SPLITTING_MODE_SUBTYPE,
+    "subtyping": SPLITTING_MODE_SUBTYPE,
+    "reference": SPLITTING_MODE_HXB2,
+    "ref": SPLITTING_MODE_HXB2,
+    "hxb2": SPLITTING_MODE_HXB2,
+}
+
 
 def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
           output_dir: str = None, n_jobs: int = None, reporting: bool = True,
@@ -46,8 +80,9 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     It aligns the user sequences with the reference sequences and saves the
     best alignment in a fasta file. If subtyping is True, it aligns the user
     sequences with the reference sequences from the HIV-1 subtyping tool.
-    If splitting is True, it splits the user sequences into gene regions
-    and saves them in specific folders. It also saves a final table with the results.
+    If splitting is enabled, it splits the user sequences into gene regions
+    and saves them in specific folders. splitting accepts booleans for backwards
+    compatibility, or "subtype", "hxb2"/"reference", and "none".
     If reporting is True, it generates a PDF report with visualizations.
     alignment_tool selects the alignment backend. Defaults to edlib-HW.
     kmer_size and reference_top_k control the k-mer candidate reference
@@ -59,6 +94,8 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     """
     paths = get_reference_paths()
     validate_reference_paths(paths)
+    splitting_mode = normalize_splitting_mode(splitting, subtyping=subtyping)
+    should_split = splitting_mode != SPLITTING_MODE_NONE
 
     fastas_dir = Path(fastas_dir)
     output_dir = Path(output_dir) if output_dir else Path('PyHIV_results')
@@ -72,10 +109,11 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     allowed_reference_accessions = selected_reference_accessions(
         reference_sequences,
         selected_reference_groups,
-        require_features=splitting,
-    ) if subtyping and (splitting or reference_group_filter_requested) else None
+        require_features=splitting_mode == SPLITTING_MODE_SUBTYPE,
+    ) if subtyping and (should_split or reference_group_filter_requested) else None
 
-    final_table = pd.DataFrame(columns=FINAL_TABLE_COLUMNS)
+    final_table_columns = final_table_columns_for_splitting(should_split)
+    final_table = pd.DataFrame(columns=final_table_columns)
 
     for fasta in user_fastas:
         sequence_name = fasta.id
@@ -104,6 +142,9 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
             continue
 
         test_aligned, ref_aligned, ref_file, alignment_scores = best_alignment
+        splitting_test_aligned = test_aligned
+        splitting_ref_aligned = ref_aligned
+        splitting_ref_file = ref_file
 
         # Extract reference information
         ref_file_parts = Path(ref_file).stem.split('-')
@@ -127,20 +168,50 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
 
         # save a fasta file with the best alignment
         final_alignment_file = output_dir / f"best_alignment_{sequence_name}.fasta"
-        with open(final_alignment_file, 'w') as output_file:
-            output_file.write(
-                f">Reference {Path(ref_file).stem}\n{ref_aligned}\n>{sequence_name}\n{test_aligned}\n"
-            )
+        write_alignment_file(final_alignment_file, Path(ref_file).stem, ref_aligned, sequence_name, test_aligned)
 
-        if splitting:
+        if should_split:
+            if splitting_mode == SPLITTING_MODE_HXB2 and subtyping:
+                hxb2_alignment = align_with_references(
+                    fasta,
+                    references_dir=paths["HXB2_GENOME_FASTA_DIR"],
+                    n_jobs=n_jobs,
+                    alignment_tool=alignment_tool,
+                    kmer_size=kmer_size,
+                    reference_top_k=reference_top_k,
+                )
+                if hxb2_alignment is None:
+                    row_data = [
+                        sequence_name,
+                        accession,
+                        group,
+                        subtype,
+                        closest_subtypes,
+                        "-",
+                        "-",
+                        "-",
+                    ]
+                    final_table = pd.concat(
+                        [final_table, pd.DataFrame([row_data], columns=final_table.columns)],
+                        ignore_index=True
+                    )
+                    continue
+
+                splitting_test_aligned, splitting_ref_aligned, splitting_ref_file = hxb2_alignment
+                splitting_alignment_file = output_dir / f"{SPLITTING_ALIGNMENT_PREFIX}_{sequence_name}.fasta"
+                write_alignment_file(
+                    splitting_alignment_file,
+                    Path(splitting_ref_file).stem,
+                    splitting_ref_aligned,
+                    sequence_name,
+                    splitting_test_aligned,
+                )
+
+            splitting_accession = Path(splitting_ref_file).stem.split('-')[0]
             # Retrieve gene ranges
-            gene_ranges = ast.literal_eval(
-                reference_sequences.loc[
-                    reference_sequences['accession'] == accession, 'features'
-                ].values[0]
-            )
+            gene_ranges = reference_features(reference_sequences, splitting_accession)
 
-            mapping = map_ref_coords_to_alignment(ref_aligned)
+            mapping = map_ref_coords_to_alignment(splitting_ref_aligned)
 
             aligned_gene_ranges = {
                 gene: (mapping[start], mapping[end])
@@ -149,16 +220,16 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
             }
 
             # get gene region with most matches
-            region = get_gene_region(test_aligned, ref_aligned, aligned_gene_ranges)
+            region = get_gene_region(splitting_test_aligned, splitting_ref_aligned, aligned_gene_ranges)
             # get gene regions with base pair letters
-            present_regions = get_present_gene_regions(test_aligned, aligned_gene_ranges)
+            present_regions = get_present_gene_regions(splitting_test_aligned, aligned_gene_ranges)
 
             # Save gene regions fasta in each region-specific folder
             written_region_files: set[Path] = set()
             for gene in present_regions:
                 relative_gene_path, file_suffix = feature_output_location(
                     gene,
-                    hierarchical=subtyping,
+                    hierarchical=splitting_mode == SPLITTING_MODE_SUBTYPE,
                 )
                 gene_path = output_dir / relative_gene_path
                 gene_path.mkdir(parents=True, exist_ok=True)
@@ -169,7 +240,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
                 written_region_files.add(gene_file)
                 with open(gene_file, 'w') as output_file:
                     aln_start, aln_end = aligned_gene_ranges[gene]
-                    seq_fragment = test_aligned[aln_start:aln_end+1]
+                    seq_fragment = splitting_test_aligned[aln_start:aln_end+1]
                     output_file.write(f'>{sequence_name}\n{seq_fragment}\n')
 
             # Save the results in the final global table
@@ -179,25 +250,24 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
                 group,
                 subtype,
                 closest_subtypes,
+                splitting_accession,
                 str(region).strip("[]"),
                 str(present_regions).strip("[]"),
             ]
         else:
-            row_data = [sequence_name, accession, group, subtype, closest_subtypes, "-", "-"]
+            row_data = [sequence_name, accession, group, subtype, closest_subtypes]
 
         final_table = pd.concat(
             [final_table, pd.DataFrame([row_data], columns=final_table.columns)],
             ignore_index=True
         )
-    if not splitting:
-        final_table.drop(columns=['Most Matching Gene Region', 'Present Gene Regions'], inplace=True)
 
     final_table.to_csv(output_dir / 'final_table.tsv', sep='\t', index=False)
     
     # Generate PDF report if requested
     if reporting:
         try:
-            reporter = PyHIVReporter(output_dir, subtyping=subtyping, splitting=splitting)
+            reporter = PyHIVReporter(output_dir, subtyping=subtyping, splitting=should_split)
             sequences_with_locations_path = paths["SEQUENCES_WITH_LOCATION"]
             pdf_path = reporter.generate_report(
                 final_table_path=output_dir / 'final_table.tsv',
@@ -207,6 +277,54 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
             logging.info(f"PDF report generated: {pdf_path}")
         except Exception as e: # pragma: no cover
             logging.exception("Error generating PDF report — continuing without it.")
+
+
+def final_table_columns_for_splitting(should_split: bool) -> list[str]:
+    if should_split:
+        return FINAL_TABLE_BASE_COLUMNS + FINAL_TABLE_SPLITTING_COLUMNS
+    return FINAL_TABLE_BASE_COLUMNS.copy()
+
+
+def normalize_splitting_mode(splitting, subtyping: bool = True) -> str:
+    if isinstance(splitting, bool):
+        if not splitting:
+            return SPLITTING_MODE_NONE
+        return SPLITTING_MODE_SUBTYPE if subtyping else SPLITTING_MODE_HXB2
+
+    mode = str(splitting).strip().lower().replace("-", "_")
+    mode = mode.replace("_", "")
+    try:
+        normalized = SPLITTING_MODE_ALIASES[mode]
+    except KeyError as exc:
+        supported = "subtype, hxb2/reference, none"
+        raise ValueError(f"Unsupported splitting mode: {splitting!r}. Supported modes: {supported}.") from exc
+
+    if normalized == SPLITTING_MODE_SUBTYPE and not subtyping:
+        return SPLITTING_MODE_HXB2
+    return normalized
+
+
+def write_alignment_file(
+    path: Path,
+    reference_name: str,
+    ref_aligned: str,
+    sequence_name: str,
+    test_aligned: str,
+) -> None:
+    with open(path, 'w') as output_file:
+        output_file.write(
+            f">Reference {reference_name}\n{ref_aligned}\n>{sequence_name}\n{test_aligned}\n"
+        )
+
+
+def reference_features(reference_sequences: pd.DataFrame, accession: str) -> dict:
+    matches = reference_sequences.loc[
+        reference_sequences['accession'].astype(str) == str(accession),
+        'features'
+    ]
+    if matches.empty:
+        raise ValueError(f"No annotated features found for splitting reference accession: {accession}.")
+    return ast.literal_eval(matches.values[0])
 
 
 def normalize_reference_groups(reference_groups) -> tuple[str, ...]:

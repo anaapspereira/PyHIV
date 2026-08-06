@@ -11,6 +11,11 @@ from pyhiv import (
     NO_SUBTYPING_LABEL,
     PyHIV,
     SEQUENCE_TOO_LONG_WARNING,
+    SPLITTING_ALIGNMENT_PREFIX,
+    SPLITTING_MODE_HXB2,
+    SPLITTING_MODE_NONE,
+    SPLITTING_MODE_SUBTYPE,
+    normalize_splitting_mode,
     normalize_reference_groups,
     reference_has_features,
     selected_reference_accessions,
@@ -58,7 +63,7 @@ class TestPyHIV(TestCase):
         table = pd.read_csv(table_file, sep='\t')
         expected_cols = [
             'Sequence', 'Reference', 'Group', 'Subtype', 'Closest Subtypes',
-            'Most Matching Gene Region', 'Present Gene Regions'
+            'Splitting Reference', 'Most Matching Gene Region', 'Present Gene Regions'
         ]
         self.assertListEqual(list(table.columns), expected_cols)
         self.assertTrue(len(table) > 0)
@@ -182,6 +187,101 @@ class TestPyHIV(TestCase):
             pd.read_csv(REFERENCE_BASE / "sequences_with_locations.tsv", sep="\t")["accession"].astype(str)
         )
         self.assertEqual(allowed, listed_accessions)
+
+    @patch("pyhiv.reference_features", return_value={"gag": (1, 3)})
+    @patch("pyhiv.align_with_references")
+    @patch("pyhiv.read_input_fastas")
+    @patch("pyhiv.validate_reference_paths")
+    @patch("pyhiv.get_reference_paths")
+    def test_subtyping_can_split_against_hxb2_reference(
+        self,
+        mock_paths,
+        mock_validate,
+        mock_read_fastas,
+        mock_align,
+        mock_reference_features,
+    ):
+        """Subtyping can keep the subtype call while using HXB2 for gene splitting."""
+        mock_paths.return_value = {
+            "SEQUENCES_WITH_LOCATION": REFERENCE_BASE / "sequences_with_locations.tsv",
+            "REFERENCE_GENOMES_FASTAS_DIR": REFERENCE_BASE / "reference_fastas",
+            "HXB2_GENOME_FASTA_DIR": REFERENCE_BASE / "HXB2_fasta",
+        }
+        mock_read_fastas.return_value = [SeqRecord(Seq("AAA"), id="query")]
+        mock_align.side_effect = [
+            ("AAA", "AAA", "AB253421-A1", [(3, "AB253421-A1")]),
+            ("AAA", "AAA", "K03455-B",),
+        ]
+
+        PyHIV(
+            fastas_dir=str(DATA_DIR),
+            subtyping=True,
+            splitting="hxb2",
+            output_dir=str(self.output_dir),
+            reporting=False,
+        )
+
+        self.assertEqual(mock_align.call_count, 2)
+        self.assertEqual(
+            mock_align.call_args_list[0].kwargs["references_dir"],
+            REFERENCE_BASE / "reference_fastas",
+        )
+        self.assertEqual(
+            mock_align.call_args_list[1].kwargs["references_dir"],
+            REFERENCE_BASE / "HXB2_fasta",
+        )
+        mock_reference_features.assert_called_once()
+        self.assertEqual(mock_reference_features.call_args.args[1], "K03455")
+
+        table = pd.read_csv(self.output_dir / "final_table.tsv", sep='\t')
+        self.assertEqual(table.loc[0, "Reference"], "AB253421")
+        self.assertEqual(table.loc[0, "Splitting Reference"], "K03455")
+        self.assertTrue((self.output_dir / f"best_alignment_query.fasta").exists())
+        self.assertTrue((self.output_dir / f"{SPLITTING_ALIGNMENT_PREFIX}_query.fasta").exists())
+
+    @patch("pyhiv.reference_features", return_value={"gag": (1, 3)})
+    @patch("pyhiv.align_with_references")
+    @patch("pyhiv.read_input_fastas")
+    @patch("pyhiv.validate_reference_paths")
+    @patch("pyhiv.get_reference_paths")
+    def test_no_subtyping_forces_subtype_splitting_to_hxb2(
+        self,
+        mock_paths,
+        mock_validate,
+        mock_read_fastas,
+        mock_align,
+        mock_reference_features,
+    ):
+        """Without subtyping, active splitting always uses HXB2 coordinates."""
+        mock_paths.return_value = {
+            "SEQUENCES_WITH_LOCATION": REFERENCE_BASE / "sequences_with_locations.tsv",
+            "REFERENCE_GENOMES_FASTAS_DIR": REFERENCE_BASE / "reference_fastas",
+            "HXB2_GENOME_FASTA_DIR": REFERENCE_BASE / "HXB2_fasta",
+        }
+        mock_read_fastas.return_value = [SeqRecord(Seq("AAA"), id="query")]
+        mock_align.return_value = ("AAA", "AAA", "K03455-B", [(3, "K03455-B")])
+
+        PyHIV(
+            fastas_dir=str(DATA_DIR),
+            subtyping=False,
+            splitting="subtype",
+            output_dir=str(self.output_dir),
+            reporting=False,
+        )
+
+        mock_align.assert_called_once()
+        self.assertEqual(
+            mock_align.call_args.kwargs["references_dir"],
+            REFERENCE_BASE / "HXB2_fasta",
+        )
+        mock_reference_features.assert_called_once()
+        self.assertEqual(mock_reference_features.call_args.args[1], "K03455")
+
+        table = pd.read_csv(self.output_dir / "final_table.tsv", sep='\t')
+        self.assertEqual(table.loc[0, "Reference"], "K03455")
+        self.assertEqual(table.loc[0, "Splitting Reference"], "K03455")
+        self.assertEqual(table.loc[0, "Group"], NO_SUBTYPING_LABEL)
+        self.assertEqual(table.loc[0, "Subtype"], NO_SUBTYPING_LABEL)
 
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
     def test_pyhiv_no_subtyping_uses_uniform_table_labels(self):
@@ -307,6 +407,14 @@ class TestPyHIV(TestCase):
         self.assertFalse(reference_has_features("None"))
         self.assertFalse(reference_has_features("{}"))
         self.assertTrue(reference_has_features("{'gag': (1, 10)}"))
+
+    def test_normalize_splitting_mode_accepts_new_modes(self):
+        self.assertEqual(normalize_splitting_mode(True, subtyping=True), SPLITTING_MODE_SUBTYPE)
+        self.assertEqual(normalize_splitting_mode(False, subtyping=True), SPLITTING_MODE_NONE)
+        self.assertEqual(normalize_splitting_mode("reference", subtyping=True), SPLITTING_MODE_HXB2)
+        self.assertEqual(normalize_splitting_mode("hxb2", subtyping=True), SPLITTING_MODE_HXB2)
+        self.assertEqual(normalize_splitting_mode("subtype", subtyping=True), SPLITTING_MODE_SUBTYPE)
+        self.assertEqual(normalize_splitting_mode("subtype", subtyping=False), SPLITTING_MODE_HXB2)
 
     def test_summarize_closest_subtypes_returns_top_unique_subtypes(self):
         metadata_by_accession = {

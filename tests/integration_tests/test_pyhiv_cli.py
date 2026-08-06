@@ -153,6 +153,45 @@ class TestPyHIVCLI(TestCase):
 
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
     @patch("pyhiv.PyHIV")
+    def test_run_cli_with_hxb2_splitting_mode(self, mock_pyhiv):
+        """Test CLI passes HXB2 splitting mode to PyHIV."""
+        result = self.runner.invoke(
+            cli,
+            [
+                "run",
+                str(DATA_DIR),
+                "--splitting",
+                "hxb2",
+            ],
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(mock_pyhiv.call_args.kwargs["splitting"], "hxb2")
+
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    @patch("pyhiv.PyHIV")
+    def test_run_cli_with_no_subtyping_displays_hxb2_splitting(self, mock_pyhiv):
+        """With subtyping disabled, subtype splitting is normalized to HXB2."""
+        result = self.runner.invoke(
+            cli,
+            [
+                "run",
+                str(DATA_DIR),
+                "--subtyping",
+                "false",
+                "--splitting",
+                "subtype",
+                "--verbose",
+            ],
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertFalse(mock_pyhiv.call_args.kwargs["subtyping"])
+        self.assertEqual(mock_pyhiv.call_args.kwargs["splitting"], "subtype")
+        self.assertIn("Splitting: hxb2", result.output)
+
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    @patch("pyhiv.PyHIV")
     def test_run_cli_quiet_mode(self, mock_pyhiv):
         """Test running CLI in quiet mode (suppresses non-error output)."""
         result = self.runner.invoke(
@@ -217,7 +256,12 @@ class TestPyHIVCLI(TestCase):
         existing_dir = TEST_DIR / "existing_dir"
         existing_dir.mkdir(exist_ok=True)
         result = self.runner.invoke(cli, ["run", str(DATA_DIR), "-o", str(existing_dir)])
-        self.assertIn("Warning: Output directory", result.output)
+        self.assertNotIn("Warning: Output directory", result.output)
+        verbose_result = self.runner.invoke(
+            cli,
+            ["run", str(DATA_DIR), "-o", str(existing_dir), "--verbose"],
+        )
+        self.assertIn("Warning: Output directory", verbose_result.output)
         shutil.rmtree(existing_dir)
 
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})

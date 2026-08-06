@@ -52,7 +52,7 @@ from pyhiv import PyHIV
 PyHIV(
     fastas_dir="path/to/fasta/files",
     subtyping=True,
-    splitting=True,
+    splitting=True,  # True/"subtype", "hxb2"/"reference", or False/"none"
     output_dir="results_folder",
     n_jobs=4,
     reporting=True,
@@ -62,6 +62,8 @@ PyHIV(
     reference_groups="M"
 )
 ```
+
+When `subtyping=False`, any active splitting mode uses HXB2 coordinates.
 
 ## What PyHIV Produces
 

@@ -5,7 +5,8 @@ import click
 from pathlib import Path
 import sys
 import time
-from pyhiv import __version__, normalize_reference_groups
+import warnings
+from pyhiv import __version__, normalize_reference_groups, normalize_splitting_mode
 from pyhiv.align import (
     ALIGNMENT_TOOL_CHOICES,
     DEFAULT_ALIGNMENT_TOOL,
@@ -48,6 +49,22 @@ def validate_reference_groups(ctx, param, value):
         raise click.BadParameter(str(exc)) from exc
 
 
+def validate_splitting(ctx, param, value):
+    """Validate splitting mode while preserving true/false compatibility."""
+    if isinstance(value, bool):
+        return value
+
+    text = str(value).strip().lower()
+    if text in {"true", "1", "yes", "on"}:
+        return True
+    if text in {"false", "0", "no", "off", "none"}:
+        return False
+    try:
+        return normalize_splitting_mode(text)
+    except ValueError as exc:
+        raise click.BadParameter(str(exc)) from exc
+
+
 def count_fasta_files(directory):
     """Count FASTA files in the input directory."""
     return sum(1 for f in Path(directory).rglob('*') if f.is_file() and f.suffix.lower() in SUPPORTED_FASTA_EXTENSIONS)
@@ -69,10 +86,11 @@ def count_fasta_files(directory):
 )
 @click.option(
     '--splitting',
-    type=click.BOOL,
-    default=True,
+    type=str,
+    default="true",
     show_default=True,
-    help='Enable or disable gene region splitting. Use true/false. When enabled, splits sequences into gene regions.'
+    callback=validate_splitting,
+    help='Splitting mode: true/subtype, hxb2/reference, or false/none. If subtyping is false, active splitting uses HXB2.'
 )
 @click.option(
     '-o', '--output-dir',
@@ -166,6 +184,9 @@ def main(
         # Only alignment, no splitting
         pyhiv /path/to/fastas/ --splitting false
 
+        # Subtyping with HXB2-based splitting
+        pyhiv /path/to/fastas/ --splitting hxb2
+
         # Quiet mode (only show errors)
         pyhiv /path/to/fastas/ -q
 
@@ -183,19 +204,25 @@ def main(
     elif verbose:
         logging_level = logging.DEBUG
     else:
-        logging_level = logging.INFO
+        logging_level = logging.ERROR
+
+    if verbose:
+        warnings.filterwarnings("default")
+    else:
+        warnings.filterwarnings("ignore")
 
     logging.basicConfig(
         level=logging_level,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+    logging.getLogger().setLevel(logging_level)
 
     # Set output directory
     output_path = output_dir or Path('PyHIV_results')
 
     # Check if output directory exists and warn user
-    if output_path.exists() and not quiet:
+    if output_path.exists() and verbose:
         click.secho(f"Warning: Output directory '{output_path}' already exists. Files may be overwritten.",
                     fg='yellow', err=True)
 
@@ -206,11 +233,12 @@ def main(
         sys.exit(1)
 
     if verbose:
+        splitting_mode = normalize_splitting_mode(splitting, subtyping=subtyping)
         click.echo(f"PyHIV v{__version__}")
         click.echo(f"Input directory: {fastas_dir}")
         click.echo(f"Found {num_files} FASTA file(s)")
         click.echo(f"Subtyping: {'enabled' if subtyping else 'disabled'}")
-        click.echo(f"Splitting: {'enabled' if splitting else 'disabled'}")
+        click.echo(f"Splitting: {splitting_mode}")
         click.echo(f"Alignment tool: {alignment_tool}")
         click.echo(f"K-mer size: {kmer_size}")
         click.echo(f"Reference top-k: {reference_top_k or 'all'}")

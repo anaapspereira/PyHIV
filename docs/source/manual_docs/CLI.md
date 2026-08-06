@@ -70,8 +70,8 @@ Checks:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--subtyping` / `--no-subtyping` | `--subtyping` | Enable/disable HIV-1 subtyping |
-| `--splitting` / `--no-splitting` | `--splitting` | Enable/disable gene region splitting |
+| `--subtyping BOOL` | `true` | Enable/disable HIV-1 subtyping |
+| `--splitting TEXT` | `true` | Splitting mode: `true`/`subtype`, `hxb2`/`reference`, or `false`/`none`. If `--subtyping false`, active splitting uses HXB2 |
 
 ### Output Options
 
@@ -129,12 +129,17 @@ pyhiv run sequences/ -j 8
 
 **Alignment only (no subtyping or splitting):**
 ```bash
-pyhiv run sequences/ --no-subtyping --no-splitting
+pyhiv run sequences/ --subtyping false --splitting false
 ```
 
 **Subtyping without gene splitting:**
 ```bash
-pyhiv run sequences/ --no-splitting
+pyhiv run sequences/ --splitting false
+```
+
+**Subtyping with HXB2-based splitting:**
+```bash
+pyhiv run sequences/ --splitting hxb2
 ```
 
 **Verbose output with timing:**
@@ -176,7 +181,7 @@ pyhiv validate data/raw_sequences/
 pyhiv run data/raw_sequences/ -o results/run1/ -v
 
 # 3. Process subset without splitting
-pyhiv run data/subset/ -o results/run2/ --no-splitting -j 4
+pyhiv run data/subset/ -o results/run2/ --splitting false -j 4
 ```
 
 **Integration with shell scripts:**
@@ -256,19 +261,21 @@ Summary table with columns:
 | Group | HIV-1 reference group |
 | Subtype | HIV-1 subtype (if `--subtyping` enabled) |
 | Closest Subtypes | Top 3 closest unique group/subtype calls by alignment score |
+| Splitting Reference | Reference accession used for gene splitting |
 | Most Matching Gene Region | Gene with most matches |
 | Present Gene Regions | All detected gene regions |
 
 **Example:**
 ```
-Sequence    Reference    Group    Subtype    Closest Subtypes                                  Most Matching Gene Region    Present Gene Regions
-seq001      K03455       M        B          M:B (score=9120); M:C (score=8894); M:A1 (...)   pol                          gag, pol, env
-seq002      AF004885     M        C          M:C (score=9015); M:B (score=8801); M:A1 (...)   env                          pol, env
+Sequence    Reference    Group    Subtype    Closest Subtypes                                  Splitting Reference    Most Matching Gene Region    Present Gene Regions
+seq001      K03455       M        B          M:B (score=9120); M:C (score=8894); M:A1 (...)   K03455                 pol                          gag, pol, env
+seq002      AF004885     M        C          M:C (score=9015); M:B (score=8801); M:A1 (...)   AF004885               env                          pol, env
 ```
 
 #### Alignment Files
 
 - `best_alignment_<sequence_id>.fasta`: Contains reference and query alignment
+- `splitting_alignment_<sequence_id>.fasta`: Contains the HXB2 alignment when `--splitting hxb2` is used with subtyping
 - Format: Multi-FASTA with reference sequence and aligned query
 
 #### Gene Region Files
@@ -331,7 +338,7 @@ Error: No FASTA files found in the input directory.
 - Verify directory path is correct
 - Use `pyhiv validate` to diagnose
 
-**Output directory exists:**
+**Output directory exists in verbose mode:**
 ```
 Warning: Output directory 'PyHIV_results' already exists. Files may be overwritten.
 ```
@@ -393,7 +400,7 @@ pyhiv validate --help
 
 1. **Use validation first** - `pyhiv validate` is fast and catches input errors
 2. **Adjust parallelism** - Start with default (all CPUs), reduce if memory is limited
-3. **Disable unused features** - Use `--no-splitting` if you only need alignments
+3. **Disable unused features** - Use `--splitting false` if you only need alignments
 4. **Batch processing** - For thousands of sequences, split into smaller batches
 5. **SSD storage** - Use SSD for output directory to improve I/O performance
 

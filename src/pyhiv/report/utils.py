@@ -348,7 +348,7 @@ def get_numeric_offsets_non_special(gene: str) -> tuple[float, float]:
     return NumericOffsets.get_offsets(gene)
 
 
-def build_alignment_path(sequence: str, alignments_dir: Path) -> Path:
+def build_alignment_path(sequence: str, alignments_dir: Path, prefix: str = "best_alignment") -> Path:
     """
     Build path to alignment FASTA file.
 
@@ -364,5 +364,11 @@ def build_alignment_path(sequence: str, alignments_dir: Path) -> Path:
     Path
         The path to the alignment FASTA file.
     """
-    p = alignments_dir / f"best_alignment_{sequence}.fasta"
-    return p if p.exists() else (alignments_dir / f"{sequence}.fasta")
+    p = alignments_dir / f"{prefix}_{sequence}.fasta"
+    if p.exists():
+        return p
+    if prefix != "best_alignment":
+        best = alignments_dir / f"best_alignment_{sequence}.fasta"
+        if best.exists():
+            return best
+    return alignments_dir / f"{sequence}.fasta"
