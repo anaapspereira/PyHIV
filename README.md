@@ -169,13 +169,13 @@ After running PyHIV, your output directory (default: PyHIV_results/) will contai
 ```
 PyHIV_results/
 │
-├── best_alignment_<sequence>.fasta     # Alignment to best reference
-├── splitting_alignment_<sequence>.fasta # HXB2 alignment when splitting uses HXB2 with subtyping
+├── best_alignment_<file_stem>_<sequence>.fasta      # Alignment to best reference
+├── splitting_alignment_<file_stem>_<sequence>.fasta # HXB2 alignment when splitting uses HXB2 with subtyping
 ├── final_table.tsv                     # Summary of results
 ├── PyHIV_report_all_sequences.pdf     # PDF report (if reporting=True)
 │
 ├── gag/
-│   ├── <sequence>_gag.fasta
+│   ├── <file_stem>_<sequence>_gag.fasta
 │   └── ...
 ├── pol/
 │   ├── <sequence>_pol.fasta
@@ -189,6 +189,7 @@ PyHIV_results/
 
 | Column                        | Description                                     |
 | ----------------------------- | ----------------------------------------------- |
+| **File Name**                 | Source FASTA file name                          |
 | **Sequence**                  | Input sequence name                             |
 | **Reference**                 | Best matching reference accession               |
 | **Group**                     | Predicted HIV-1 reference group                 |

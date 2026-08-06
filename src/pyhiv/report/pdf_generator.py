@@ -28,6 +28,7 @@ def render_sequence_page(
     user_seq_aligned: str,
     y_positions: Optional[Dict[str, float]] = None,
     splitting_accession: Optional[str] = None,
+    file_name: str = "-",
 ):
     """
     Render a single sequence page in the PDF report.
@@ -38,6 +39,8 @@ def render_sequence_page(
         The PdfPages object to save the figure into.
     sequence : str
         The name or identifier of the sequence.
+    file_name : str
+        The source FASTA file name for the sequence.
     accession : str
         The accession number of the sequence.
     group : str
@@ -77,6 +80,7 @@ def render_sequence_page(
     usr_len_nt = len(ungap(user_seq_aligned))
 
     meta_lines = [
+        f"File name: {file_name or '-'}",
         f"Sequence: {sequence}",
         f"Group: {group}",
         f"Subtype: {subtype}",

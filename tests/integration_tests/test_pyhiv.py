@@ -63,7 +63,7 @@ class TestPyHIV(TestCase):
         self.assertTrue(table_file.exists())
         table = pd.read_csv(table_file, sep='\t')
         expected_cols = [
-            'Sequence', 'Reference', 'Group', 'Subtype', 'Closest Subtypes',
+            'File Name', 'Sequence', 'Reference', 'Group', 'Subtype', 'Closest Subtypes',
             'Splitting Reference', 'Most Matching Gene Region', 'Present Gene Regions'
         ]
         self.assertListEqual(list(table.columns), expected_cols)
@@ -86,7 +86,10 @@ class TestPyHIV(TestCase):
         table = pd.read_csv(table_file, sep='\t')
 
         # Columns specific to splitting should be dropped
-        self.assertListEqual(list(table.columns), ['Sequence', 'Reference', 'Group', 'Subtype', 'Closest Subtypes'])
+        self.assertListEqual(
+            list(table.columns),
+            ['File Name', 'Sequence', 'Reference', 'Group', 'Subtype', 'Closest Subtypes'],
+        )
 
     @patch("pyhiv.align_with_references")
     @patch("pyhiv.read_input_fastas")
@@ -105,7 +108,9 @@ class TestPyHIV(TestCase):
             "REFERENCE_GENOMES_FASTAS_DIR": REFERENCE_BASE / "reference_fastas",
             "HXB2_GENOME_FASTA_DIR": REFERENCE_BASE / "HXB2_fasta",
         }
-        mock_read_fastas.return_value = [SeqRecord(Seq("AAA"), id="query")]
+        query = SeqRecord(Seq("AAA"), id="query")
+        query.annotations["source_file"] = "sample.fasta"
+        mock_read_fastas.return_value = [query]
         mock_align.return_value = ("AAA", "AAA", "not_in_table-X", [(3, "not_in_table-X")])
 
         PyHIV(
@@ -135,7 +140,9 @@ class TestPyHIV(TestCase):
             "REFERENCE_GENOMES_FASTAS_DIR": REFERENCE_BASE / "reference_fastas",
             "HXB2_GENOME_FASTA_DIR": REFERENCE_BASE / "HXB2_fasta",
         }
-        mock_read_fastas.return_value = [SeqRecord(Seq("AAA"), id="query")]
+        query = SeqRecord(Seq("AAA"), id="query")
+        query.annotations["source_file"] = "sample.fasta"
+        mock_read_fastas.return_value = [query]
         mock_align.return_value = ("AAA", "AAA", "AB253421-A1", [(3, "AB253421-A1")])
 
         PyHIV(
@@ -222,7 +229,9 @@ class TestPyHIV(TestCase):
             "REFERENCE_GENOMES_FASTAS_DIR": REFERENCE_BASE / "reference_fastas",
             "HXB2_GENOME_FASTA_DIR": REFERENCE_BASE / "HXB2_fasta",
         }
-        mock_read_fastas.return_value = [SeqRecord(Seq("AAA"), id="query")]
+        query = SeqRecord(Seq("AAA"), id="query")
+        query.annotations["source_file"] = "sample.fasta"
+        mock_read_fastas.return_value = [query]
         mock_align.side_effect = [
             ("AAA", "AAA", "ACCNO-B", [(5, "ACCNO-B"), (4, "K03455-B")]),
             ("AAA", "AAA", "K03455-B"),
@@ -251,12 +260,13 @@ class TestPyHIV(TestCase):
         )
 
         table = pd.read_csv(self.output_dir / "final_table.tsv", sep='\t')
+        self.assertEqual(table.loc[0, "File Name"], "sample.fasta")
         self.assertEqual(table.loc[0, "Reference"], "ACCNO")
         self.assertEqual(table.loc[0, "Splitting Reference"], "K03455")
         self.assertEqual(table.loc[0, "Group"], "M")
         self.assertEqual(table.loc[0, "Subtype"], "B")
-        self.assertTrue((self.output_dir / f"best_alignment_query.fasta").exists())
-        self.assertTrue((self.output_dir / f"{SPLITTING_ALIGNMENT_PREFIX}_query.fasta").exists())
+        self.assertTrue((self.output_dir / f"best_alignment_sample_query.fasta").exists())
+        self.assertTrue((self.output_dir / f"{SPLITTING_ALIGNMENT_PREFIX}_sample_query.fasta").exists())
 
     @patch("pyhiv.reference_features", return_value={"gag": (1, 3)})
     @patch("pyhiv.align_with_references")

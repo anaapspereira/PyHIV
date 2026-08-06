@@ -43,6 +43,9 @@ def read_input_fastas(input_folder: Path) -> List[SeqRecord]:
             if not records:
                 logging.warning(f"File {fasta_file} contains no valid sequences.")
             else:
+                for record in records:
+                    record.annotations["source_file"] = fasta_file.name
+                    record.annotations["source_path"] = str(fasta_file)
                 sequences.extend(records)
                 logging.info(f"Successfully read {len(records)} sequences from {fasta_file}")
         except Exception as e:

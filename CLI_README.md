@@ -334,14 +334,14 @@ PyHIV recursively searches for FASTA files in all subdirectories.
 ```
 PyHIV_results/
 ├── final_table.tsv                    # Summary table
-├── best_alignment_sample1.fasta       # Best alignments
-├── best_alignment_sample2.fasta
+├── best_alignment_inputA_sample1.fasta # Best alignments
+├── best_alignment_inputB_sample2.fasta
 ├── gag/                               # Gene regions (if --splitting)
-│   ├── sample1_gag.fasta
-│   └── sample2_gag.fasta
+│   ├── inputA_sample1_gag.fasta
+│   └── inputB_sample2_gag.fasta
 ├── pol/
-│   ├── sample1_pol.fasta
-│   └── sample2_pol.fasta
+│   ├── inputA_sample1_pol.fasta
+│   └── inputB_sample2_pol.fasta
 ├── env/
 └── ...
 ```
@@ -354,6 +354,7 @@ Summary table with columns:
 
 | Column | Description |
 |--------|-------------|
+| File Name | Source FASTA file name |
 | Sequence | Input sequence ID |
 | Reference | Best matching reference accession |
 | Group | HIV-1 reference group |
@@ -365,15 +366,15 @@ Summary table with columns:
 
 **Example:**
 ```
-Sequence    Reference    Group    Subtype    Closest Subtypes                                  Splitting Reference    Most Matching Gene Region    Present Gene Regions
-seq001      K03455       M        B          M:B (score=9120); M:C (score=8894); M:A1 (...)   K03455                 pol                          gag, pol, env
-seq002      AF004885     M        C          M:C (score=9015); M:B (score=8801); M:A1 (...)   AF004885               env                          pol, env
+File Name        Sequence    Reference    Group    Subtype    Closest Subtypes                                  Splitting Reference    Most Matching Gene Region    Present Gene Regions
+sample_1.fasta   seq001      K03455       M        B          M:B (score=9120); M:C (score=8894); M:A1 (...)   K03455                 pol                          gag, pol, env
+sample_2.fasta   seq002      AF004885     M        C          M:C (score=9015); M:B (score=8801); M:A1 (...)   AF004885               env                          pol, env
 ```
 
 #### Alignment Files
 
-- `best_alignment_<sequence_id>.fasta`: Contains reference and query alignment
-- `splitting_alignment_<sequence_id>.fasta`: Contains the HXB2 alignment when `--splitting hxb2` is used with subtyping, or when `--splitting true` falls back to HXB2 because the selected subtype reference has no annotated features
+- `best_alignment_<file_stem>_<sequence_id>.fasta`: Contains reference and query alignment
+- `splitting_alignment_<file_stem>_<sequence_id>.fasta`: Contains the HXB2 alignment when `--splitting hxb2` is used with subtyping, or when `--splitting true` falls back to HXB2 because the selected subtype reference has no annotated features
 - Format: Multi-FASTA with reference sequence and aligned query
 
 #### Gene Region Files

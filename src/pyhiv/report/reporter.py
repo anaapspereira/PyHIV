@@ -111,6 +111,7 @@ class PyHIVReporter:
             pages_made = 0
 
             for _, r in ft.iterrows():
+                file_name = str(r["File Name"]) if "File Name" in r else "-"
                 sequence = str(r["Sequence"])
                 accession = str(r["Reference"])
                 splitting_accession = str(r.get("Splitting Reference", accession))
@@ -126,7 +127,12 @@ class PyHIVReporter:
                     if self.splitting and splitting_accession not in {"", "-", accession}
                     else "best_alignment"
                 )
-                fasta_path = build_alignment_path(sequence, self.output_dir, prefix=alignment_prefix)
+                fasta_path = build_alignment_path(
+                    sequence,
+                    self.output_dir,
+                    prefix=alignment_prefix,
+                    file_name=file_name,
+                )
                 if not fasta_path.exists():
                     self.logger.warning(f"Alignment FASTA not found for {sequence}: {fasta_path}")
                     continue
@@ -157,6 +163,7 @@ class PyHIVReporter:
                 render_sequence_page(
                     pdf=pdf,
                     sequence=sequence,
+                    file_name=file_name,
                     accession=accession,
                     group=group,
                     subtype=subtype,

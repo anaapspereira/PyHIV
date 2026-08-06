@@ -49,6 +49,8 @@ class TestReadFastas(TestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].id, "seq1")
         self.assertEqual(result[1].seq, Seq("GATTACA"))
+        self.assertEqual(result[0].annotations["source_file"], "sample.fasta")
+        self.assertEqual(result[1].annotations["source_file"], "sample.fasta")
 
     def test_raises_error_if_not_directory(self):
         """Test that NotADirectoryError is raised if input path is not a directory."""
@@ -106,4 +108,3 @@ class TestReadFastas(TestCase):
         # Check that the warning for no supported FASTA files was triggered
         mock_warning.assert_called_once()
         self.assertIn("No FASTA files with supported extensions found", mock_warning.call_args[0][0])
-

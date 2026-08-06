@@ -2,6 +2,7 @@ __version__ = "0.1.0"
 
 import ast
 from pathlib import Path
+import re
 import pandas as pd
 
 from pyhiv.align import align_with_references, reference_accession_from_name
@@ -20,6 +21,7 @@ import logging
 from pyhiv.align import DEFAULT_ALIGNMENT_TOOL, DEFAULT_KMER_SIZE, DEFAULT_REFERENCE_TOP_K
 
 FINAL_TABLE_COLUMNS = [
+    'File Name',
     'Sequence',
     'Reference',
     'Group',
@@ -30,6 +32,7 @@ FINAL_TABLE_COLUMNS = [
     'Present Gene Regions',
 ]
 FINAL_TABLE_BASE_COLUMNS = [
+    'File Name',
     'Sequence',
     'Reference',
     'Group',
@@ -117,6 +120,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
 
     for fasta in user_fastas:
         sequence_name = fasta.id
+        file_name = fasta.annotations.get("source_file", "-")
         sequence_length = len(str(fasta.seq).replace("-", ""))
         if sequence_length > MAX_HIV1_SEQUENCE_LENGTH:
             logging.warning("%s Skipping sequence '%s'.", SEQUENCE_TOO_LONG_WARNING, sequence_name)
@@ -167,7 +171,8 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
             closest_subtypes = NO_SUBTYPING_LABEL
 
         # save a fasta file with the best alignment
-        final_alignment_file = output_dir / f"best_alignment_{sequence_name}.fasta"
+        output_label = sequence_output_label(file_name, sequence_name)
+        final_alignment_file = output_dir / f"best_alignment_{output_label}.fasta"
         write_alignment_file(final_alignment_file, Path(ref_file).stem, ref_aligned, sequence_name, test_aligned)
 
         if should_split:
@@ -190,6 +195,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
                 )
                 if hxb2_alignment is None:
                     row_data = [
+                        file_name,
                         sequence_name,
                         accession,
                         group,
@@ -206,7 +212,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
                     continue
 
                 splitting_test_aligned, splitting_ref_aligned, splitting_ref_file = hxb2_alignment
-                splitting_alignment_file = output_dir / f"{SPLITTING_ALIGNMENT_PREFIX}_{sequence_name}.fasta"
+                splitting_alignment_file = output_dir / f"{SPLITTING_ALIGNMENT_PREFIX}_{output_label}.fasta"
                 write_alignment_file(
                     splitting_alignment_file,
                     Path(splitting_ref_file).stem,
@@ -241,10 +247,10 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
                 )
                 gene_path = output_dir / relative_gene_path
                 gene_path.mkdir(parents=True, exist_ok=True)
-                gene_file = gene_path / f"{sequence_name}_{file_suffix}.fasta"
+                gene_file = gene_path / f"{output_label}_{file_suffix}.fasta"
                 if gene_file in written_region_files:
                     original_suffix = slugify_feature_name(gene)
-                    gene_file = gene_path / f"{sequence_name}_{original_suffix}.fasta"
+                    gene_file = gene_path / f"{output_label}_{original_suffix}.fasta"
                 written_region_files.add(gene_file)
                 with open(gene_file, 'w') as output_file:
                     aln_start, aln_end = aligned_gene_ranges[gene]
@@ -253,6 +259,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
 
             # Save the results in the final global table
             row_data = [
+                file_name,
                 sequence_name,
                 accession,
                 group,
@@ -263,7 +270,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
                 str(present_regions).strip("[]"),
             ]
         else:
-            row_data = [sequence_name, accession, group, subtype, closest_subtypes]
+            row_data = [file_name, sequence_name, accession, group, subtype, closest_subtypes]
 
         final_table = pd.concat(
             [final_table, pd.DataFrame([row_data], columns=final_table.columns)],
@@ -323,6 +330,24 @@ def write_alignment_file(
         output_file.write(
             f">Reference {reference_name}\n{ref_aligned}\n>{sequence_name}\n{test_aligned}\n"
         )
+
+
+def sequence_output_label(file_name: str, sequence_name: str) -> str:
+    sequence_label = safe_output_label(sequence_name)
+    if not file_name or file_name == "-":
+        return sequence_label
+
+    file_label = safe_output_label(Path(file_name).stem)
+    if not file_label:
+        return sequence_label
+    return f"{file_label}_{sequence_label}"
+
+
+def safe_output_label(value: str) -> str:
+    label = str(value or "").strip()
+    label = re.sub(r"[^A-Za-z0-9._-]+", "_", label)
+    label = label.strip("._-")
+    return label or "unknown"
 
 
 def reference_features(reference_sequences: pd.DataFrame, accession: str) -> dict:
