@@ -72,6 +72,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     allowed_reference_accessions = selected_reference_accessions(
         reference_sequences,
         selected_reference_groups,
+        require_features=splitting,
     ) if subtyping and (splitting or reference_group_filter_requested) else None
 
     final_table = pd.DataFrame(columns=FINAL_TABLE_COLUMNS)
@@ -280,21 +281,57 @@ def summarize_closest_subtypes(
 def selected_reference_accessions(
     reference_sequences: pd.DataFrame,
     reference_groups: tuple[str, ...],
+    require_features: bool = False,
 ) -> set[str] | None:
+    selected_rows = reference_sequences
+
     if "group" not in reference_sequences.columns:
         logging.warning(
             "sequences_with_locations.tsv has no 'group' column; using all listed reference accessions."
         )
-        return set(reference_sequences["accession"].astype(str))
+    else:
+        selected_rows = selected_rows.loc[
+            selected_rows["group"].astype(str).str.upper().isin(reference_groups)
+        ]
 
-    selected = set(reference_sequences.loc[
-        reference_sequences["group"].astype(str).str.upper().isin(reference_groups),
-        "accession",
-    ].astype(str))
+    if require_features:
+        if "features" not in reference_sequences.columns:
+            raise ValueError(
+                "sequences_with_locations.tsv must include a 'features' column when splitting is enabled."
+            )
+        selected_rows = selected_rows.loc[
+            selected_rows["features"].apply(reference_has_features)
+        ]
+
+    selected = set(selected_rows["accession"].astype(str))
 
     if not selected:
+        detail = " with annotated features" if require_features else ""
         raise ValueError(
-            f"No reference accessions found for group(s): {', '.join(reference_groups)}."
+            f"No reference accessions{detail} found for group(s): {', '.join(reference_groups)}."
         )
 
     return selected
+
+
+def reference_has_features(features) -> bool:
+    if features is None or (isinstance(features, float) and pd.isna(features)):
+        return False
+
+    if isinstance(features, dict):
+        return bool(features)
+
+    text = str(features).strip()
+    if not text or text.lower() in {"none", "nan", "null"}:
+        return False
+
+    try:
+        parsed = ast.literal_eval(text)
+    except (ValueError, SyntaxError):
+        return True
+
+    if parsed is None:
+        return False
+    if isinstance(parsed, dict):
+        return bool(parsed)
+    return True

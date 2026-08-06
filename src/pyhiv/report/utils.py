@@ -150,7 +150,12 @@ def parse_features(cell: Any) -> Dict[str, Tuple[int, int]]:
         return {}
     if isinstance(cell, dict):
         return {str(k): (int(v[0]), int(v[1])) for k, v in cell.items()}
-    d = ast.literal_eval(str(cell))
+    text = str(cell).strip()
+    if not text or text.lower() in {"none", "nan", "null"}:
+        return {}
+    d = ast.literal_eval(text)
+    if d is None:
+        return {}
     return {str(k): (int(v[0]), int(v[1])) for k, v in d.items()}
 
 

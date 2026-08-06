@@ -12,6 +12,7 @@ from pyhiv import (
     PyHIV,
     SEQUENCE_TOO_LONG_WARNING,
     normalize_reference_groups,
+    reference_has_features,
     selected_reference_accessions,
     summarize_closest_subtypes,
 )
@@ -288,6 +289,24 @@ class TestPyHIV(TestCase):
             selected_reference_accessions(reference_sequences, ("M",)),
             {"acc_1", "acc_2"},
         )
+
+    def test_selected_reference_accessions_can_require_features(self):
+        reference_sequences = pd.DataFrame([
+            {"accession": "acc_with_features", "group": "M", "features": "{'gag': (1, 10)}"},
+            {"accession": "acc_without_features", "group": "M", "features": "None"},
+            {"accession": "acc_other_group", "group": "N", "features": "{'env': (20, 30)}"},
+        ])
+
+        self.assertEqual(
+            selected_reference_accessions(reference_sequences, ("M",), require_features=True),
+            {"acc_with_features"},
+        )
+
+    def test_reference_has_features_handles_none_values(self):
+        self.assertFalse(reference_has_features(None))
+        self.assertFalse(reference_has_features("None"))
+        self.assertFalse(reference_has_features("{}"))
+        self.assertTrue(reference_has_features("{'gag': (1, 10)}"))
 
     def test_summarize_closest_subtypes_returns_top_unique_subtypes(self):
         metadata_by_accession = {

@@ -67,6 +67,7 @@ class TestReportingUtils(TestCase):
     def test_parse_features_none_and_nan(self):
         self.assertEqual(parse_features(None), {})
         self.assertEqual(parse_features(float("nan")), {})
+        self.assertEqual(parse_features("None"), {})
 
     def test_read_alignment_fasta_file_not_found(self):
         missing = self.tmp_dir / "missing.fasta"
