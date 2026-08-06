@@ -40,7 +40,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
           alignment_tool: str = DEFAULT_ALIGNMENT_TOOL,
           kmer_size: int = DEFAULT_KMER_SIZE,
           reference_top_k: int = DEFAULT_REFERENCE_TOP_K,
-          reference_groups=DEFAULT_REFERENCE_GROUPS):
+          reference_groups=None):
     """
     Main function to run the PyHIV pipeline.
     It aligns the user sequences with the reference sequences and saves the
@@ -53,8 +53,9 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     kmer_size and reference_top_k control the k-mer candidate reference
     prefilter used before alignment.
     reference_groups controls which HIV-1 reference groups are eligible for
-    subtyping. Defaults to group M. Use ("M", "N", "O", "P") to include all
-    known groups.
+    subtyping. When splitting is enabled, omitted groups default to group M.
+    When splitting is disabled, omitted groups allow all FASTA references.
+    Use ("M", "N", "O", "P") to include all known groups.
     """
     paths = get_reference_paths()
     validate_reference_paths(paths)
@@ -65,12 +66,13 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
 
     user_fastas = read_input_fastas(fastas_dir)
     reference_sequences = pd.read_csv(paths["SEQUENCES_WITH_LOCATION"], sep='\t')
-    selected_reference_groups = normalize_reference_groups(reference_groups)
     metadata_by_accession = build_reference_metadata(reference_sequences)
+    reference_group_filter_requested = reference_groups is not None
+    selected_reference_groups = normalize_reference_groups(reference_groups)
     allowed_reference_accessions = selected_reference_accessions(
         reference_sequences,
         selected_reference_groups,
-    ) if subtyping else None
+    ) if subtyping and (splitting or reference_group_filter_requested) else None
 
     final_table = pd.DataFrame(columns=FINAL_TABLE_COLUMNS)
 
@@ -122,13 +124,6 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
             subtype = NO_SUBTYPING_LABEL
             closest_subtypes = NO_SUBTYPING_LABEL
 
-        # Retrieve gene ranges
-        gene_ranges = ast.literal_eval(
-            reference_sequences.loc[
-                reference_sequences['accession'] == accession, 'features'
-            ].values[0]
-        )
-
         # save a fasta file with the best alignment
         final_alignment_file = output_dir / f"best_alignment_{sequence_name}.fasta"
         with open(final_alignment_file, 'w') as output_file:
@@ -137,6 +132,12 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
             )
 
         if splitting:
+            # Retrieve gene ranges
+            gene_ranges = ast.literal_eval(
+                reference_sequences.loc[
+                    reference_sequences['accession'] == accession, 'features'
+                ].values[0]
+            )
 
             mapping = map_ref_coords_to_alignment(ref_aligned)
 
@@ -282,9 +283,9 @@ def selected_reference_accessions(
 ) -> set[str] | None:
     if "group" not in reference_sequences.columns:
         logging.warning(
-            "sequences_with_locations.tsv has no 'group' column; all references are eligible."
+            "sequences_with_locations.tsv has no 'group' column; using all listed reference accessions."
         )
-        return None
+        return set(reference_sequences["accession"].astype(str))
 
     selected = set(reference_sequences.loc[
         reference_sequences["group"].astype(str).str.upper().isin(reference_groups),

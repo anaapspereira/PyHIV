@@ -81,6 +81,107 @@ class TestPyHIV(TestCase):
         # Columns specific to splitting should be dropped
         self.assertListEqual(list(table.columns), ['Sequence', 'Reference', 'Group', 'Subtype', 'Closest Subtypes'])
 
+    @patch("pyhiv.align_with_references")
+    @patch("pyhiv.read_input_fastas")
+    @patch("pyhiv.validate_reference_paths")
+    @patch("pyhiv.get_reference_paths")
+    def test_subtyping_without_splitting_uses_all_reference_fastas(
+        self,
+        mock_paths,
+        mock_validate,
+        mock_read_fastas,
+        mock_align,
+    ):
+        """When no splitting is requested, subtype against every FASTA in the reference folder."""
+        mock_paths.return_value = {
+            "SEQUENCES_WITH_LOCATION": REFERENCE_BASE / "sequences_with_locations.tsv",
+            "REFERENCE_GENOMES_FASTAS_DIR": REFERENCE_BASE / "reference_fastas",
+            "HXB2_GENOME_FASTA_DIR": REFERENCE_BASE / "HXB2_fasta",
+        }
+        mock_read_fastas.return_value = [SeqRecord(Seq("AAA"), id="query")]
+        mock_align.return_value = ("AAA", "AAA", "not_in_table-X", [(3, "not_in_table-X")])
+
+        PyHIV(
+            fastas_dir=str(DATA_DIR),
+            subtyping=True,
+            splitting=False,
+            output_dir=str(self.output_dir),
+            reporting=False,
+        )
+
+        self.assertIsNone(mock_align.call_args.kwargs["allowed_reference_accessions"])
+
+    @patch("pyhiv.align_with_references")
+    @patch("pyhiv.read_input_fastas")
+    @patch("pyhiv.validate_reference_paths")
+    @patch("pyhiv.get_reference_paths")
+    def test_subtyping_without_splitting_can_filter_reference_groups(
+        self,
+        mock_paths,
+        mock_validate,
+        mock_read_fastas,
+        mock_align,
+    ):
+        """Explicit reference groups should still filter subtyping without splitting."""
+        mock_paths.return_value = {
+            "SEQUENCES_WITH_LOCATION": REFERENCE_BASE / "sequences_with_locations.tsv",
+            "REFERENCE_GENOMES_FASTAS_DIR": REFERENCE_BASE / "reference_fastas",
+            "HXB2_GENOME_FASTA_DIR": REFERENCE_BASE / "HXB2_fasta",
+        }
+        mock_read_fastas.return_value = [SeqRecord(Seq("AAA"), id="query")]
+        mock_align.return_value = ("AAA", "AAA", "AB253421-A1", [(3, "AB253421-A1")])
+
+        PyHIV(
+            fastas_dir=str(DATA_DIR),
+            subtyping=True,
+            splitting=False,
+            output_dir=str(self.output_dir),
+            reporting=False,
+            reference_groups=("M",),
+        )
+
+        self.assertEqual(
+            mock_align.call_args.kwargs["allowed_reference_accessions"],
+            selected_reference_accessions(
+                pd.read_csv(REFERENCE_BASE / "sequences_with_locations.tsv", sep="\t"),
+                ("M",),
+            ),
+        )
+
+    @patch("pyhiv.align_with_references", return_value=None)
+    @patch("pyhiv.read_input_fastas")
+    @patch("pyhiv.validate_reference_paths")
+    @patch("pyhiv.get_reference_paths")
+    def test_subtyping_with_splitting_filters_to_listed_reference_fastas(
+        self,
+        mock_paths,
+        mock_validate,
+        mock_read_fastas,
+        mock_align,
+    ):
+        """When splitting is requested, ignore reference FASTAs absent from sequences_with_locations."""
+        mock_paths.return_value = {
+            "SEQUENCES_WITH_LOCATION": REFERENCE_BASE / "sequences_with_locations.tsv",
+            "REFERENCE_GENOMES_FASTAS_DIR": REFERENCE_BASE / "reference_fastas",
+            "HXB2_GENOME_FASTA_DIR": REFERENCE_BASE / "HXB2_fasta",
+        }
+        mock_read_fastas.return_value = [SeqRecord(Seq("AAA"), id="query")]
+
+        PyHIV(
+            fastas_dir=str(DATA_DIR),
+            subtyping=True,
+            splitting=True,
+            output_dir=str(self.output_dir),
+            reporting=False,
+            reference_groups=("M", "N", "O", "P"),
+        )
+
+        allowed = mock_align.call_args.kwargs["allowed_reference_accessions"]
+        listed_accessions = set(
+            pd.read_csv(REFERENCE_BASE / "sequences_with_locations.tsv", sep="\t")["accession"].astype(str)
+        )
+        self.assertEqual(allowed, listed_accessions)
+
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
     def test_pyhiv_no_subtyping_uses_uniform_table_labels(self):
         """HXB2 alignment should not report reference group/subtype as subtype results."""
@@ -175,6 +276,17 @@ class TestPyHIV(TestCase):
         self.assertEqual(
             selected_reference_accessions(reference_sequences, ("O",)),
             {"acc_o"},
+        )
+
+    def test_selected_reference_accessions_without_group_returns_all_listed(self):
+        reference_sequences = pd.DataFrame([
+            {"accession": "acc_1"},
+            {"accession": "acc_2"},
+        ])
+
+        self.assertEqual(
+            selected_reference_accessions(reference_sequences, ("M",)),
+            {"acc_1", "acc_2"},
         )
 
     def test_summarize_closest_subtypes_returns_top_unique_subtypes(self):

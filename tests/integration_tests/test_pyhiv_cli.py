@@ -64,7 +64,7 @@ class TestPyHIVCLI(TestCase):
             alignment_tool="edlib-HW",
             kmer_size=15,
             reference_top_k=30,
-            reference_groups="M",
+            reference_groups=None,
         )
         self.assertIn(f"PyHIV v{__version__}", result.output)
 

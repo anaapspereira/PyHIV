@@ -5,7 +5,7 @@ import click
 from pathlib import Path
 import sys
 import time
-from pyhiv import DEFAULT_REFERENCE_GROUPS, __version__, normalize_reference_groups
+from pyhiv import __version__, normalize_reference_groups
 from pyhiv.align import (
     ALIGNMENT_TOOL_CHOICES,
     DEFAULT_ALIGNMENT_TOOL,
@@ -40,6 +40,8 @@ def validate_reference_top_k(ctx, param, value):
 
 def validate_reference_groups(ctx, param, value):
     """Validate comma-separated HIV-1 reference groups."""
+    if value is None:
+        return None
     try:
         return ",".join(normalize_reference_groups(value))
     except ValueError as exc:
@@ -126,8 +128,8 @@ def count_fasta_files(directory):
 )
 @click.option(
     '--reference-groups',
-    default=",".join(DEFAULT_REFERENCE_GROUPS),
-    show_default=True,
+    default=None,
+    show_default="M when splitting is true; all references when splitting is false",
     callback=validate_reference_groups,
     help='Comma-separated HIV-1 reference groups used for subtyping. Use M,N,O,P to include all groups.'
 )
