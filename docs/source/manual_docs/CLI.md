@@ -71,7 +71,7 @@ Checks:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--subtyping BOOL` | `true` | Enable/disable HIV-1 subtyping |
-| `--splitting TEXT` | `true` | Splitting mode: `true`/`subtype`, `hxb2`/`reference`, or `false`/`none`. If `--subtyping false`, active splitting uses HXB2 |
+| `--splitting TEXT` | `true` | Splitting mode: `true`/`subtype`, `hxb2`/`reference`, or `false`/`none`. With `--subtyping true`, `true` uses the subtype reference when it has features and falls back to HXB2 when features are missing. If `--subtyping false`, active splitting uses HXB2 |
 
 ### Output Options
 
@@ -275,7 +275,7 @@ seq002      AF004885     M        C          M:C (score=9015); M:B (score=8801);
 #### Alignment Files
 
 - `best_alignment_<sequence_id>.fasta`: Contains reference and query alignment
-- `splitting_alignment_<sequence_id>.fasta`: Contains the HXB2 alignment when `--splitting hxb2` is used with subtyping
+- `splitting_alignment_<sequence_id>.fasta`: Contains the HXB2 alignment when `--splitting hxb2` is used with subtyping, or when `--splitting true` falls back to HXB2 because the selected subtype reference has no annotated features
 - Format: Multi-FASTA with reference sequence and aligned query
 
 #### Gene Region Files

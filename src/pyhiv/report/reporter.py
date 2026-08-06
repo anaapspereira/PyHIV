@@ -157,7 +157,7 @@ class PyHIVReporter:
                 render_sequence_page(
                     pdf=pdf,
                     sequence=sequence,
-                    accession=splitting_accession if self.splitting else accession,
+                    accession=accession,
                     group=group,
                     subtype=subtype,
                     closest_subtypes=closest_subtypes,
@@ -167,6 +167,7 @@ class PyHIVReporter:
                     ref_seq_aligned=ref_seq_aln,
                     user_seq_aligned=user_seq_aln,
                     y_positions=y_pos,
+                    splitting_accession=splitting_accession if self.splitting else None,
                 )
 
                 pages_made += 1

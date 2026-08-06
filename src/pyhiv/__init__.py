@@ -109,7 +109,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     allowed_reference_accessions = selected_reference_accessions(
         reference_sequences,
         selected_reference_groups,
-        require_features=splitting_mode == SPLITTING_MODE_SUBTYPE,
+        require_features=False,
     ) if subtyping and (should_split or reference_group_filter_requested) else None
 
     final_table_columns = final_table_columns_for_splitting(should_split)
@@ -171,7 +171,15 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
         write_alignment_file(final_alignment_file, Path(ref_file).stem, ref_aligned, sequence_name, test_aligned)
 
         if should_split:
-            if splitting_mode == SPLITTING_MODE_HXB2 and subtyping:
+            split_against_hxb2 = (
+                splitting_mode == SPLITTING_MODE_HXB2 and subtyping
+            ) or (
+                splitting_mode == SPLITTING_MODE_SUBTYPE
+                and subtyping
+                and not has_reference_features(reference_sequences, accession)
+            )
+
+            if split_against_hxb2:
                 hxb2_alignment = align_with_references(
                     fasta,
                     references_dir=paths["HXB2_GENOME_FASTA_DIR"],
@@ -325,6 +333,20 @@ def reference_features(reference_sequences: pd.DataFrame, accession: str) -> dic
     if matches.empty:
         raise ValueError(f"No annotated features found for splitting reference accession: {accession}.")
     return ast.literal_eval(matches.values[0])
+
+
+def has_reference_features(reference_sequences: pd.DataFrame, accession: str) -> bool:
+    if "features" not in reference_sequences.columns:
+        return False
+
+    matches = reference_sequences.loc[
+        reference_sequences["accession"].astype(str) == str(accession),
+        "features",
+    ]
+    if matches.empty:
+        return False
+
+    return reference_has_features(matches.values[0])
 
 
 def normalize_reference_groups(reference_groups) -> tuple[str, ...]:

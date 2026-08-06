@@ -90,7 +90,7 @@ def count_fasta_files(directory):
     default="true",
     show_default=True,
     callback=validate_splitting,
-    help='Splitting mode: true/subtype, hxb2/reference, or false/none. If subtyping is false, active splitting uses HXB2.'
+    help='Splitting mode: true/subtype, hxb2/reference, or false/none. With subtyping true, true falls back to HXB2 when the subtype reference has no features. If subtyping is false, active splitting uses HXB2.'
 )
 @click.option(
     '-o', '--output-dir',

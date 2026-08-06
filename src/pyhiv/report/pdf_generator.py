@@ -26,7 +26,8 @@ def render_sequence_page(
     features_aln: Dict[str, Tuple[int, int]],
     ref_seq_aligned: str,
     user_seq_aligned: str,
-    y_positions: Optional[Dict[str, float]] = None
+    y_positions: Optional[Dict[str, float]] = None,
+    splitting_accession: Optional[str] = None,
 ):
     """
     Render a single sequence page in the PDF report.
@@ -81,10 +82,15 @@ def render_sequence_page(
         f"Subtype: {subtype}",
         f"Closest subtypes: {closest_subtypes or '-'}",
         f"Reference Accession: {accession}",
+    ]
+    if splitting_accession:
+        meta_lines.append(f"Splitting Reference: {splitting_accession}")
+
+    meta_lines.extend([
         f"Most matching region: {mm_region or '-'}",
         f"Present regions ({len(present_regions)}): {', '.join(present_regions) if present_regions else '-'}",
         f"Lengths — nt (no gaps) Ref|Seq: {ref_len_nt} | {usr_len_nt}",
-    ]
+    ])
     wrapped = "\n".join(textwrap.fill(l, width=MetadataConfig.WRAP, subsequent_indent='   ') for l in meta_lines)
 
     ax_meta.text(0.0, MetadataConfig.INFO_TOP_Y, wrapped, ha="left", va="top",

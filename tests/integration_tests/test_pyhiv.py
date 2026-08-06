@@ -15,6 +15,7 @@ from pyhiv import (
     SPLITTING_MODE_HXB2,
     SPLITTING_MODE_NONE,
     SPLITTING_MODE_SUBTYPE,
+    has_reference_features,
     normalize_splitting_mode,
     normalize_reference_groups,
     reference_has_features,
@@ -187,6 +188,75 @@ class TestPyHIV(TestCase):
             pd.read_csv(REFERENCE_BASE / "sequences_with_locations.tsv", sep="\t")["accession"].astype(str)
         )
         self.assertEqual(allowed, listed_accessions)
+
+    @patch("pyhiv.align_with_references")
+    @patch("pyhiv.read_input_fastas")
+    @patch("pyhiv.validate_reference_paths")
+    @patch("pyhiv.get_reference_paths")
+    def test_subtyping_with_splitting_falls_back_to_hxb2_when_reference_has_no_features(
+        self,
+        mock_paths,
+        mock_validate,
+        mock_read_fastas,
+        mock_align,
+    ):
+        """Subtype against the best reference, but split against HXB2 if its features are missing."""
+        sequences_with_locations = self.output_dir / "sequences_with_locations.tsv"
+        pd.DataFrame([
+            {
+                "accession": "ACCNO",
+                "group": "M",
+                "subtype": "B",
+                "features": "None",
+            },
+            {
+                "accession": "K03455",
+                "group": "M",
+                "subtype": "B",
+                "features": "{'gag': (1, 3)}",
+            },
+        ]).to_csv(sequences_with_locations, sep="\t", index=False)
+
+        mock_paths.return_value = {
+            "SEQUENCES_WITH_LOCATION": sequences_with_locations,
+            "REFERENCE_GENOMES_FASTAS_DIR": REFERENCE_BASE / "reference_fastas",
+            "HXB2_GENOME_FASTA_DIR": REFERENCE_BASE / "HXB2_fasta",
+        }
+        mock_read_fastas.return_value = [SeqRecord(Seq("AAA"), id="query")]
+        mock_align.side_effect = [
+            ("AAA", "AAA", "ACCNO-B", [(5, "ACCNO-B"), (4, "K03455-B")]),
+            ("AAA", "AAA", "K03455-B"),
+        ]
+
+        PyHIV(
+            fastas_dir=str(DATA_DIR),
+            subtyping=True,
+            splitting=True,
+            output_dir=str(self.output_dir),
+            reporting=False,
+        )
+
+        self.assertEqual(mock_align.call_count, 2)
+        self.assertEqual(
+            mock_align.call_args_list[0].kwargs["references_dir"],
+            REFERENCE_BASE / "reference_fastas",
+        )
+        self.assertEqual(
+            mock_align.call_args_list[0].kwargs["allowed_reference_accessions"],
+            {"ACCNO", "K03455"},
+        )
+        self.assertEqual(
+            mock_align.call_args_list[1].kwargs["references_dir"],
+            REFERENCE_BASE / "HXB2_fasta",
+        )
+
+        table = pd.read_csv(self.output_dir / "final_table.tsv", sep='\t')
+        self.assertEqual(table.loc[0, "Reference"], "ACCNO")
+        self.assertEqual(table.loc[0, "Splitting Reference"], "K03455")
+        self.assertEqual(table.loc[0, "Group"], "M")
+        self.assertEqual(table.loc[0, "Subtype"], "B")
+        self.assertTrue((self.output_dir / f"best_alignment_query.fasta").exists())
+        self.assertTrue((self.output_dir / f"{SPLITTING_ALIGNMENT_PREFIX}_query.fasta").exists())
 
     @patch("pyhiv.reference_features", return_value={"gag": (1, 3)})
     @patch("pyhiv.align_with_references")
@@ -407,6 +477,16 @@ class TestPyHIV(TestCase):
         self.assertFalse(reference_has_features("None"))
         self.assertFalse(reference_has_features("{}"))
         self.assertTrue(reference_has_features("{'gag': (1, 10)}"))
+
+    def test_has_reference_features_looks_up_accession_features(self):
+        reference_sequences = pd.DataFrame([
+            {"accession": "acc_with_features", "features": "{'gag': (1, 10)}"},
+            {"accession": "acc_without_features", "features": "None"},
+        ])
+
+        self.assertTrue(has_reference_features(reference_sequences, "acc_with_features"))
+        self.assertFalse(has_reference_features(reference_sequences, "acc_without_features"))
+        self.assertFalse(has_reference_features(reference_sequences, "missing"))
 
     def test_normalize_splitting_mode_accepts_new_modes(self):
         self.assertEqual(normalize_splitting_mode(True, subtyping=True), SPLITTING_MODE_SUBTYPE)
