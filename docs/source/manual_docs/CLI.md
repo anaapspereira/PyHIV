@@ -89,7 +89,7 @@ Checks:
 | `--reference-top-k INTEGER` | `30` | Number of top k-mer ranked references to align; use `0` to align all references |
 | `--reference-groups TEXT` | `M` | Comma-separated HIV-1 reference groups used for subtyping; use `M,N,O,P` to include groups N, O, and P |
 
-`edlib-HW` is the default alignment backend. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` are available through `--alignment-tool`.
+`edlib-HW` is the default alignment backend. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` are available through `--alignment-tool`. `parasail-NW` requires the optional `parasail` extra — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon).
 
 Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `--reference-top-k 0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; use `--reference-groups M,N,O,P` to include groups N, O, and P.
 
