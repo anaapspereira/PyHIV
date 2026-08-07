@@ -71,9 +71,11 @@ def sequence_output_label(file_name: str | None, sequence_name: str) -> str:
     if not file_name or file_name == "-":
         return sequence_label
 
-    file_label = safe_output_label(Path(file_name).stem)
-    if not file_label:
+    file_stem = Path(file_name).stem
+    if not file_stem:
         return sequence_label
+
+    file_label = safe_output_label(file_stem)
     return f"{file_label}_{sequence_label}"
 
 
