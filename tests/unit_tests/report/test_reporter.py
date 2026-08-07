@@ -1,4 +1,5 @@
 import io
+import logging
 import tempfile
 from pathlib import Path
 from unittest import TestCase, mock
@@ -51,6 +52,18 @@ class TestPyHIVReporter(TestCase):
 
     def tearDown(self):
         self.temp_dir.cleanup()
+
+    # ---- Logger configuration ----
+    def test_explicit_log_level_overrides_root_logger(self):
+        """Passing log_level should set it on the reporter's own logger."""
+        reporter = PyHIVReporter(self.tmp_path, subtyping=True, splitting=True, log_level=logging.DEBUG)
+        self.addCleanup(reporter.logger.setLevel, logging.NOTSET)
+        self.assertEqual(reporter.logger.level, logging.DEBUG)
+
+    def test_default_log_level_is_unset(self):
+        """Without an explicit log_level, the reporter should inherit from the root logger."""
+        reporter = PyHIVReporter(self.tmp_path, subtyping=True, splitting=True)
+        self.assertEqual(reporter.logger.level, logging.NOTSET)
 
     # ---- Error handling ----
     def test_missing_columns_in_final_table(self):
