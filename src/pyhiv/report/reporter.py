@@ -21,7 +21,7 @@ from pyhiv.report.utils import (
 class PyHIVReporter:
     """Main class for generating PyHIV PDF reports."""
     
-    def __init__(self, output_dir: Path, subtyping: bool, splitting: bool, log_level=logging.INFO):
+    def __init__(self, output_dir: Path, subtyping: bool, splitting: bool, log_level: int | None = None):
         """
         Initialize the reporter with output directory and logger.
 
@@ -34,7 +34,12 @@ class PyHIVReporter:
         splitting : bool
             Whether splitting was performed.
         log_level : int, optional
-            Logging level, by default logging.INFO
+            If given, overrides this logger's level explicitly. By default
+            (None), no handler or level is set here, so this logger
+            propagates to and inherits its effective level from the root
+            logger — e.g. the level the CLI configures from -v/-q — instead
+            of always emitting INFO-level messages regardless of those
+            flags.
         """
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -42,19 +47,9 @@ class PyHIVReporter:
         self.subtyping = subtyping
         self.splitting = splitting
 
-        # Configure logger
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(log_level)
-
-        # Avoid adding duplicate handlers if multiple instances are created
-        if not self.logger.handlers:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                datefmt="%Y-%m-%d %H:%M:%S"
-            )
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
+        if log_level is not None:
+            self.logger.setLevel(log_level)
     
     def generate_report(
         self,
