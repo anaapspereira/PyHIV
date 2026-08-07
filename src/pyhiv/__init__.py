@@ -20,17 +20,6 @@ import logging
 
 from pyhiv.align import DEFAULT_ALIGNMENT_TOOL, DEFAULT_KMER_SIZE, DEFAULT_REFERENCE_TOP_K
 
-FINAL_TABLE_COLUMNS = [
-    'File Name',
-    'Sequence',
-    'Reference',
-    'Group',
-    'Subtype',
-    'Closest Subtypes',
-    'Splitting Reference',
-    'Most Matching Gene Region',
-    'Present Gene Regions',
-]
 FINAL_TABLE_BASE_COLUMNS = [
     'File Name',
     'Sequence',
