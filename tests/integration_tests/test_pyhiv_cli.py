@@ -256,12 +256,17 @@ class TestPyHIVCLI(TestCase):
         existing_dir = TEST_DIR / "existing_dir"
         existing_dir.mkdir(exist_ok=True)
         result = self.runner.invoke(cli, ["run", str(DATA_DIR), "-o", str(existing_dir)])
-        self.assertNotIn("Warning: Output directory", result.output)
+        self.assertIn("Warning: Output directory", result.output)
         verbose_result = self.runner.invoke(
             cli,
             ["run", str(DATA_DIR), "-o", str(existing_dir), "--verbose"],
         )
         self.assertIn("Warning: Output directory", verbose_result.output)
+        quiet_result = self.runner.invoke(
+            cli,
+            ["run", str(DATA_DIR), "-o", str(existing_dir), "--quiet"],
+        )
+        self.assertNotIn("Warning: Output directory", quiet_result.output)
         shutil.rmtree(existing_dir)
 
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})

@@ -339,7 +339,7 @@ Error: No FASTA files found in the input directory.
 - Verify directory path is correct
 - Use `pyhiv validate` to diagnose
 
-**Output directory exists in verbose mode:**
+**Output directory exists:**
 ```
 Warning: Output directory 'PyHIV_results' already exists. Files may be overwritten.
 ```

@@ -204,7 +204,7 @@ def main(
     elif verbose:
         logging_level = logging.DEBUG
     else:
-        logging_level = logging.ERROR
+        logging_level = logging.WARNING
 
     if verbose:
         warnings.filterwarnings("default")
@@ -222,7 +222,7 @@ def main(
     output_path = output_dir or Path('PyHIV_results')
 
     # Check if output directory exists and warn user
-    if output_path.exists() and verbose:
+    if output_path.exists() and not quiet:
         click.secho(f"Warning: Output directory '{output_path}' already exists. Files may be overwritten.",
                     fg='yellow', err=True)
 
