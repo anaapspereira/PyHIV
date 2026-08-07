@@ -2,7 +2,6 @@ __version__ = "0.1.0"
 
 import ast
 from pathlib import Path
-import re
 import pandas as pd
 
 from pyhiv.align import align_with_references, reference_accession_from_name
@@ -13,6 +12,7 @@ from pyhiv.split import (
     get_gene_region,
     get_present_gene_regions,
     map_ref_coords_to_alignment,
+    sequence_output_label,
     slugify_feature_name,
 )
 from pyhiv.report import PyHIVReporter
@@ -330,24 +330,6 @@ def write_alignment_file(
         output_file.write(
             f">Reference {reference_name}\n{ref_aligned}\n>{sequence_name}\n{test_aligned}\n"
         )
-
-
-def sequence_output_label(file_name: str, sequence_name: str) -> str:
-    sequence_label = safe_output_label(sequence_name)
-    if not file_name or file_name == "-":
-        return sequence_label
-
-    file_label = safe_output_label(Path(file_name).stem)
-    if not file_label:
-        return sequence_label
-    return f"{file_label}_{sequence_label}"
-
-
-def safe_output_label(value: str) -> str:
-    label = str(value or "").strip()
-    label = re.sub(r"[^A-Za-z0-9._-]+", "_", label)
-    label = label.strip("._-")
-    return label or "unknown"
 
 
 def reference_features(reference_sequences: pd.DataFrame, accession: str) -> dict:

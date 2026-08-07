@@ -50,6 +50,33 @@ FEATURE_OUTPUT_PATHS = {
 }
 
 
+def safe_output_label(value: str) -> str:
+    """Sanitize an arbitrary string into a stable, filesystem-friendly label."""
+    label = str(value or "").strip()
+    label = re.sub(r"[^A-Za-z0-9._-]+", "_", label)
+    label = label.strip("._-")
+    return label or "unknown"
+
+
+def sequence_output_label(file_name: str | None, sequence_name: str) -> str:
+    """
+    Build the output filename label for a sequence.
+
+    Combines the source FASTA file stem with the sequence id so that
+    same-named records from different input files don't collide. Used both
+    when PyHIV writes alignment/split files and when PyHIVReporter looks
+    them back up, so the two must stay in sync.
+    """
+    sequence_label = safe_output_label(sequence_name)
+    if not file_name or file_name == "-":
+        return sequence_label
+
+    file_label = safe_output_label(Path(file_name).stem)
+    if not file_label:
+        return sequence_label
+    return f"{file_label}_{sequence_label}"
+
+
 def slugify_feature_name(feature_name: str) -> str:
     """Convert a feature name into a stable filesystem-friendly label."""
     slug = feature_name.strip().lower().replace("_", "-")

@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple, Any
 import pandas as pd
 
 from pyhiv.report.constants import NumericOffsets, K03455Config
+from pyhiv.split import safe_output_label, sequence_output_label
 
 
 def ungap(seq: str) -> str:
@@ -396,21 +397,3 @@ def build_alignment_path(
                 return candidate
 
     return alignments_dir / f"{sequence}.fasta"
-
-
-def sequence_output_label(file_name: str | None, sequence_name: str) -> str:
-    sequence_label = safe_output_label(sequence_name)
-    if not file_name or file_name == "-":
-        return sequence_label
-
-    file_label = safe_output_label(Path(file_name).stem)
-    if not file_label:
-        return sequence_label
-    return f"{file_label}_{sequence_label}"
-
-
-def safe_output_label(value: str) -> str:
-    label = str(value or "").strip()
-    label = re.sub(r"[^A-Za-z0-9._-]+", "_", label)
-    label = label.strip("._-")
-    return label or "unknown"
