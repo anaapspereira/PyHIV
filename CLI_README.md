@@ -422,7 +422,7 @@ python -c "import pandas as pd; df = pd.read_csv('results/final_table.tsv', sep=
 **Filter by subtype:**
 ```bash
 pyhiv run sequences/ -o results/ -v
-awk -F'\t' '$4 == "B"' results/final_table.tsv > subtype_B.tsv
+awk -F'\t' '$5 == "B"' results/final_table.tsv > subtype_B.tsv
 ```
 
 ## 🛠️ Troubleshooting
