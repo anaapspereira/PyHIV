@@ -208,7 +208,7 @@ pyhiv run sequences/ --reference-groups M,N,O,P
 pyhiv run sequences/ -j 1
 ```
 
-`edlib-HW` is the default and projects alignments onto full-reference genome coordinates. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` remain available through `--alignment-tool`. `edlib`, `parasail`, and `PyFamsa` are installed with PyHIV. `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
+`edlib-HW` is the default and projects alignments onto full-reference genome coordinates. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` remain available through `--alignment-tool`. `edlib` and `PyFamsa` are installed with PyHIV. `parasail` is an optional extra — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon). `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
 
 Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `--reference-top-k 0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; use `--reference-groups M,N,O,P` to include groups N, O, and P.
 
@@ -422,7 +422,7 @@ python -c "import pandas as pd; df = pd.read_csv('results/final_table.tsv', sep=
 **Filter by subtype:**
 ```bash
 pyhiv run sequences/ -o results/ -v
-awk -F'\t' '$4 == "B"' results/final_table.tsv > subtype_B.tsv
+awk -F'\t' '$5 == "B"' results/final_table.tsv > subtype_B.tsv
 ```
 
 ## 🛠️ Troubleshooting
@@ -437,7 +437,7 @@ Error: No FASTA files found in the input directory.
 - Verify directory path is correct
 - Use `pyhiv validate` to diagnose
 
-**Output directory exists in verbose mode:**
+**Output directory exists:**
 ```
 Warning: Output directory 'PyHIV_results' already exists. Files may be overwritten.
 ```

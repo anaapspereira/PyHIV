@@ -125,9 +125,7 @@ def align_with_references(test_sequence: SeqRecord,
         logging.error("No reference sequences selected by k-mer prefilter.")
         return None
 
-    best_alignment = None
-    best_score = float('-inf')
-    alignment_scores: list[tuple[int, str]] = []
+    results: list[tuple[int, str, str, str]] = []
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         futures = {
@@ -138,17 +136,17 @@ def align_with_references(test_sequence: SeqRecord,
         for future in as_completed(futures):
             result = future.result()
             if result:
-                score, test_aligned, ref_aligned, reference_name = result
-                alignment_scores.append((score, reference_name))
-                if score > best_score:
-                    best_score = score
-                    best_alignment = (test_aligned, ref_aligned, reference_name)
+                results.append(result)
 
-    if best_alignment is None:
+    if not results:
         return None
 
+    results.sort(key=lambda item: (-item[0], item[3]))
+    best_score, best_test_aligned, best_ref_aligned, best_reference_name = results[0]
+    best_alignment = (best_test_aligned, best_ref_aligned, best_reference_name)
+
     if include_alignment_scores:
-        alignment_scores.sort(key=lambda item: (-item[0], item[1]))
+        alignment_scores = [(score, reference_name) for score, _, _, reference_name in results]
         return (*best_alignment, alignment_scores)
 
     return best_alignment
