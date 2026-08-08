@@ -14,6 +14,7 @@ from pyhiv.align import (
     DEFAULT_REFERENCE_TOP_K,
 )
 import logging
+from pyhiv.config import get_reference_base_dir
 
 SUPPORTED_FASTA_EXTENSIONS = {'.fasta', '.fa', '.fna', '.ffn'}
 
@@ -334,6 +335,121 @@ def validate(fastas_dir):
             click.echo(f"  • {f.name}")
 
 
+@click.group('update')
+def update():
+    """Update packaged PyHIV datasets."""
+    pass
+
+
+@click.command('reference-dataset')
+@click.option(
+    '--reference-dir',
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    default=None,
+    help='Reference dataset root. Defaults to REFERENCE_GENOMES_DIR or the packaged reference_genomes directory.',
+)
+@click.option(
+    '--email',
+    envvar='NCBI_EMAIL',
+    default=None,
+    help='Email sent to NCBI E-utilities. Can also be set with NCBI_EMAIL.',
+)
+@click.option(
+    '--ncbi-api-key',
+    envvar='NCBI_API_KEY',
+    default=None,
+    help='Optional NCBI API key. Can also be set with NCBI_API_KEY.',
+)
+@click.option(
+    '--refresh-features',
+    is_flag=True,
+    help='Refetch GenBank feature locations for references whose features are None.',
+)
+@click.option(
+    '--dry-run',
+    is_flag=True,
+    help='Check the update without writing FASTA or TSV files.',
+)
+@click.option(
+    '-y',
+    '--yes',
+    is_flag=True,
+    help='Run without asking for confirmation.',
+)
+def update_reference_dataset(reference_dir, email, ncbi_api_key, refresh_features, dry_run, yes):
+    """Update HIV-1 reference FASTAs and sequences_with_locations.tsv."""
+    from pyhiv.loading.reference_update import update_reference_dataset as run_update
+
+    base_dir = reference_dir or get_reference_base_dir()
+
+    if refresh_features and not email:
+        raise click.UsageError(
+            "--refresh-features needs an NCBI email. Pass --email or set NCBI_EMAIL."
+        )
+
+    if not yes and not dry_run:
+        click.confirm(
+            (
+                f"This will update the reference dataset in '{base_dir}' and "
+                "rewrite sequences_with_locations.tsv. Continue?"
+            ),
+            abort=True,
+        )
+
+    try:
+        result = run_update(
+            base_dir=base_dir,
+            email=email,
+            ncbi_api_key=ncbi_api_key,
+            dry_run=dry_run,
+            refresh_features=refresh_features,
+        )
+    except Exception as exc:
+        click.secho(f"Error updating reference dataset: {exc}", fg='red', err=True)
+        sys.exit(1)
+
+    if result.up_to_date:
+        click.secho("Reference dataset is up to date.", fg='green')
+    elif dry_run:
+        click.secho(
+            (
+                "Reference dataset update available: "
+                f"LANL alignment year {result.lanl_alignment_year or 'unknown'}; "
+                f"LANL alignment {'would be refreshed' if result.lanl_alignment_updated else 'is current'}; "
+                f"{result.lanl_fasta_files_added} LANL FASTA file(s) would be added; "
+                f"{result.lanl_fasta_files_updated} LANL FASTA file(s) would be updated; "
+                f"{result.added_sequences} sequence(s) would be added; "
+                f"{result.added_rows} TSV row(s) would be added; "
+                f"{result.failed_sequences} sequence(s) would be skipped."
+            ),
+            fg='yellow',
+        )
+    else:
+        click.secho(
+            (
+                "Reference dataset updated: "
+                f"LANL alignment year {result.lanl_alignment_year or 'unknown'}; "
+                f"LANL alignment {'refreshed' if result.lanl_alignment_updated else 'already current'}; "
+                f"{result.lanl_fasta_files_added} LANL FASTA file(s) added; "
+                f"{result.lanl_fasta_files_updated} LANL FASTA file(s) updated; "
+                f"{result.added_sequences} sequence(s) added; "
+                f"{result.added_rows} TSV row(s) added; "
+                f"{result.updated_feature_rows} feature row(s) updated; "
+                f"{result.failed_sequences} sequence(s) skipped."
+            ),
+            fg='green',
+        )
+        if result.failed_accessions:
+            click.secho(
+                "Skipped unavailable GenBank accession(s): "
+                + ", ".join(result.failed_accessions),
+                fg='yellow',
+            )
+
+    click.echo(f"References: {result.reference_fastas_dir}")
+    click.echo(f"Sequences with locations: {result.sequences_with_locations}")
+
+
 # Create a group to allow multiple commands
 @click.group()
 @click.version_option(version=__version__, prog_name="PyHIV")
@@ -344,6 +460,9 @@ def cli():
 
 cli.add_command(main, name='run')
 cli.add_command(validate)
+update.add_command(update_reference_dataset)
+cli.add_command(update)
+cli.add_command(update_reference_dataset, name='update-reference-dataset')
 
 if __name__ == '__main__': # pragma: no cover
     cli()

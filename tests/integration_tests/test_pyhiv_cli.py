@@ -221,6 +221,79 @@ class TestPyHIVCLI(TestCase):
         # Should list at least one file
         self.assertRegex(result.output, r"\s• .+")
 
+    @patch("pyhiv.loading.reference_update.update_reference_dataset")
+    def test_update_reference_dataset_cli(self, mock_update):
+        """Test reference dataset update command."""
+        class Result:
+            up_to_date = False
+            added_sequences = 2
+            added_rows = 2
+            updated_feature_rows = 0
+            total_references = 10
+            reference_fastas_dir = REFERENCE_BASE / "reference_fastas"
+            sequences_with_locations = REFERENCE_BASE / "sequences_with_locations.tsv"
+            lanl_alignment_year = 2023
+            lanl_alignment_updated = False
+            lanl_fasta_records = 10
+            lanl_fasta_files_added = 0
+            lanl_fasta_files_updated = 0
+            failed_sequences = 0
+            failed_accessions = ()
+
+        mock_update.return_value = Result()
+
+        result = self.runner.invoke(
+            cli,
+            [
+                "update",
+                "reference-dataset",
+                "--reference-dir",
+                str(REFERENCE_BASE),
+                "--email",
+                "test@example.com",
+                "--yes",
+            ],
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        mock_update.assert_called_once()
+        self.assertIn("2 sequence(s) added", result.output)
+
+    @patch("pyhiv.loading.reference_update.update_reference_dataset")
+    def test_update_reference_dataset_cli_alias_up_to_date(self, mock_update):
+        """Test direct reference dataset update command alias."""
+        class Result:
+            up_to_date = True
+            added_sequences = 0
+            added_rows = 0
+            updated_feature_rows = 0
+            total_references = 10
+            reference_fastas_dir = REFERENCE_BASE / "reference_fastas"
+            sequences_with_locations = REFERENCE_BASE / "sequences_with_locations.tsv"
+            lanl_alignment_year = 2023
+            lanl_alignment_updated = False
+            lanl_fasta_records = 10
+            lanl_fasta_files_added = 0
+            lanl_fasta_files_updated = 0
+            failed_sequences = 0
+            failed_accessions = ()
+
+        mock_update.return_value = Result()
+
+        result = self.runner.invoke(
+            cli,
+            [
+                "update-reference-dataset",
+                "--reference-dir",
+                str(REFERENCE_BASE),
+                "--dry-run",
+            ],
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Reference dataset is up to date.", result.output)
+        self.assertIn("Sequences with locations:", result.output)
+
     def test_run_cli_verbose_and_quiet_conflict(self):
         """Test that CLI raises UsageError if both --verbose and --quiet are used."""
         result = self.runner.invoke(
