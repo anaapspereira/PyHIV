@@ -8,6 +8,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 from pyhiv import (
+    LOW_SCORE_MARGIN_WARNING,
     NO_SUBTYPING_LABEL,
     PyHIV,
     SEQUENCE_TOO_LONG_WARNING,
@@ -21,6 +22,7 @@ from pyhiv import (
     reference_has_features,
     selected_reference_accessions,
     summarize_closest_subtypes,
+    subtype_score_warning,
 )
 from tests import TEST_DIR
 
@@ -64,7 +66,7 @@ class TestPyHIV(TestCase):
         table = pd.read_csv(table_file, sep='\t')
         expected_cols = [
             'File Name', 'Sequence', 'Reference', 'Group', 'Subtype', 'Closest Subtypes',
-            'Splitting Reference', 'Most Matching Gene Region', 'Present Gene Regions'
+            'Subtype Score Warning', 'Splitting Reference', 'Most Matching Gene Region', 'Present Gene Regions'
         ]
         self.assertListEqual(list(table.columns), expected_cols)
         self.assertTrue(len(table) > 0)
@@ -88,7 +90,7 @@ class TestPyHIV(TestCase):
         # Columns specific to splitting should be dropped
         self.assertListEqual(
             list(table.columns),
-            ['File Name', 'Sequence', 'Reference', 'Group', 'Subtype', 'Closest Subtypes'],
+            ['File Name', 'Sequence', 'Reference', 'Group', 'Subtype', 'Closest Subtypes', 'Subtype Score Warning'],
         )
 
     @patch("pyhiv.align_with_references")
@@ -526,3 +528,24 @@ class TestPyHIV(TestCase):
         )
 
         self.assertEqual(result, "M:B (score=100); M:C (score=95); O:O (score=90)")
+
+    def test_subtype_score_warning_flags_low_relative_margin(self):
+        metadata_by_accession = {
+            "acc_b": {"group": "M", "subtype": "B"},
+            "acc_c": {"group": "M", "subtype": "C"},
+        }
+
+        self.assertEqual(
+            subtype_score_warning(
+                [(100, "acc_b-B"), (99, "acc_c-C")],
+                metadata_by_accession,
+            ),
+            LOW_SCORE_MARGIN_WARNING,
+        )
+        self.assertEqual(
+            subtype_score_warning(
+                [(100, "acc_b-B"), (98, "acc_c-C")],
+                metadata_by_accession,
+            ),
+            "",
+        )

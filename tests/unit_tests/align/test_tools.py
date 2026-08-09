@@ -55,6 +55,18 @@ class TestAlignmentTools(TestCase):
         self.assertEqual(test_aligned, "A-GT")
         self.assertEqual(ref_aligned, "ACGT")
 
+    @mock.patch("pyhiv.align.tools.logging.debug")
+    @mock.patch("pyhiv.align.tools.logging.warning")
+    def test_reference_projection_logs_dropped_insertions_as_debug(self, mock_warning, mock_debug):
+        result = tools._drop_query_insertions("ACGT", "A-GT")
+
+        self.assertEqual(result, ("AGT", "AGT"))
+        mock_warning.assert_not_called()
+        mock_debug.assert_called_once_with(
+            "Dropped %d query insertion column(s) to keep alignment in reference coordinates.",
+            1,
+        )
+
     def test_parse_pair_fasta_alignment(self):
         text = """
 >query

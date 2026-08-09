@@ -117,6 +117,12 @@ def count_fasta_files(directory):
     help='Suppress all non-error output.'
 )
 @click.option(
+    '--progress/--no-progress',
+    default=True,
+    show_default=True,
+    help='Show a progress bar while processing input sequences.'
+)
+@click.option(
     '--reporting/--no-reporting',
     default=True,
     show_default=True,
@@ -160,6 +166,7 @@ def main(
     n_jobs,
     verbose,
     quiet,
+    progress,
     reporting,
     alignment_tool,
     kmer_size,
@@ -266,6 +273,7 @@ def main(
             kmer_size=kmer_size,
             reference_top_k=reference_top_k,
             reference_groups=reference_groups,
+            show_progress=progress and not quiet,
         )
 
         elapsed_time = time.time() - start_time

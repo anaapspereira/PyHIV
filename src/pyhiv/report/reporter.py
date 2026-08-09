@@ -113,6 +113,12 @@ class PyHIVReporter:
                 group = str(r["Group"]) if self.subtyping and "Group" in r else "No subtyping performed."
                 subtype = str(r["Subtype"]) if self.subtyping else "No subtyping performed."
                 closest_subtypes = str(r["Closest Subtypes"]) if "Closest Subtypes" in r else "-"
+                subtype_score_warning_value = r.get("Subtype Score Warning", "")
+                subtype_score_warning = (
+                    ""
+                    if pd.isna(subtype_score_warning_value)
+                    else str(subtype_score_warning_value)
+                )
                 mm_region = str(r["Most Matching Gene Region"]) if "Most Matching Gene Region" in r else "-"
                 present_regions_raw = parse_present_regions(r.get("Present Gene Regions", "")) if self.splitting else []
 
@@ -163,6 +169,7 @@ class PyHIVReporter:
                     group=group,
                     subtype=subtype,
                     closest_subtypes=closest_subtypes,
+                    subtype_score_warning=subtype_score_warning,
                     mm_region=mm_region if mm_region != "-" else "",
                     present_regions=present_regions,
                     features_aln=features_aln,

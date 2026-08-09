@@ -65,6 +65,7 @@ class TestPyHIVCLI(TestCase):
             kmer_size=15,
             reference_top_k=30,
             reference_groups=None,
+            show_progress=True,
         )
         self.assertIn(f"PyHIV v{__version__}", result.output)
 
@@ -200,9 +201,21 @@ class TestPyHIVCLI(TestCase):
 
         self.assertEqual(result.exit_code, 0)
         mock_pyhiv.assert_called_once()
+        self.assertFalse(mock_pyhiv.call_args.kwargs["show_progress"])
         # Quiet mode shouldn't print normal messages
         self.assertNotIn("Processing", result.output)
         self.assertEqual(result.output.strip(), "")
+
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    @patch("pyhiv.PyHIV")
+    def test_run_cli_no_progress(self, mock_pyhiv):
+        """Test CLI can disable the progress bar."""
+        result = self.runner.invoke(
+            cli, ["run", str(DATA_DIR), "--no-progress"]
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertFalse(mock_pyhiv.call_args.kwargs["show_progress"])
 
     def test_validate_cli_no_files(self):
         """Test validate command with empty directory."""

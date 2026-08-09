@@ -29,6 +29,7 @@ def render_sequence_page(
     y_positions: Optional[Dict[str, float]] = None,
     splitting_accession: Optional[str] = None,
     file_name: str = "-",
+    subtype_score_warning: str = "",
 ):
     """
     Render a single sequence page in the PDF report.
@@ -49,6 +50,8 @@ def render_sequence_page(
         The subtype of the sequence.
     closest_subtypes : str
         Ranked summary of the closest HIV-1 subtypes.
+    subtype_score_warning : str
+        Warning shown when the top subtype scores have a low relative margin.
     mm_region : str
         The most matching region of the sequence.
     present_regions : List[str]
@@ -87,6 +90,8 @@ def render_sequence_page(
         f"Closest subtypes: {closest_subtypes or '-'}",
         f"Reference Accession: {accession}",
     ]
+    if subtype_score_warning:
+        meta_lines.append(f"Subtype score warning: {subtype_score_warning}")
     if splitting_accession:
         meta_lines.append(f"Splitting Reference: {splitting_accession}")
 

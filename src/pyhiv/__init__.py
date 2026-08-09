@@ -1,6 +1,7 @@
 __version__ = "0.1.0"
 
 import ast
+from contextlib import nullcontext
 from pathlib import Path
 import pandas as pd
 
@@ -27,6 +28,7 @@ FINAL_TABLE_BASE_COLUMNS = [
     'Group',
     'Subtype',
     'Closest Subtypes',
+    'Subtype Score Warning',
 ]
 FINAL_TABLE_SPLITTING_COLUMNS = [
     'Splitting Reference',
@@ -38,6 +40,8 @@ SEQUENCE_TOO_LONG_WARNING = "The submitted sequence is longer than the HIV-1 gen
 DEFAULT_REFERENCE_GROUPS = ("M",)
 SUPPORTED_REFERENCE_GROUPS = ("M", "N", "O", "P")
 DEFAULT_CLOSEST_SUBTYPES_COUNT = 3
+LOW_SCORE_MARGIN_THRESHOLD = 0.01
+LOW_SCORE_MARGIN_WARNING = "Low score margin: review top 3 subtype matches"
 NO_SUBTYPING_LABEL = "No subtyping performed."
 SPLITTING_MODE_NONE = "none"
 SPLITTING_MODE_SUBTYPE = "subtype"
@@ -66,7 +70,8 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
           alignment_tool: str = DEFAULT_ALIGNMENT_TOOL,
           kmer_size: int = DEFAULT_KMER_SIZE,
           reference_top_k: int = DEFAULT_REFERENCE_TOP_K,
-          reference_groups=None):
+          reference_groups=None,
+          show_progress: bool = False):
     """
     Main function to run the PyHIV pipeline.
     It aligns the user sequences with the reference sequences and saves the
@@ -83,6 +88,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     subtyping. When splitting is enabled, omitted groups default to group M.
     When splitting is disabled, omitted groups allow all FASTA references.
     Use ("M", "N", "O", "P") to include all known groups.
+    show_progress displays a terminal progress bar for processed input sequences.
     """
     paths = get_reference_paths()
     validate_reference_paths(paths)
@@ -107,13 +113,73 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     final_table_columns = final_table_columns_for_splitting(should_split)
     final_table = pd.DataFrame(columns=final_table_columns)
 
-    for fasta in user_fastas:
+    sequence_context = nullcontext(user_fastas)
+    if show_progress:
+        import click
+        sequence_context = click.progressbar(
+            user_fastas,
+            length=len(user_fastas),
+            label="Processing sequences",
+        )
+
+    with sequence_context as sequences:
+        for fasta in sequences:
+            final_table = process_fasta_sequence(
+                fasta=fasta,
+                final_table=final_table,
+                paths=paths,
+                subtyping=subtyping,
+                splitting_mode=splitting_mode,
+                should_split=should_split,
+                output_dir=output_dir,
+                n_jobs=n_jobs,
+                alignment_tool=alignment_tool,
+                kmer_size=kmer_size,
+                reference_top_k=reference_top_k,
+                allowed_reference_accessions=allowed_reference_accessions,
+                reference_sequences=reference_sequences,
+                metadata_by_accession=metadata_by_accession,
+            )
+
+    final_table.to_csv(output_dir / 'final_table.tsv', sep='\t', index=False)
+    
+    # Generate PDF report if requested
+    if reporting:
+        try:
+            reporter = PyHIVReporter(output_dir, subtyping=subtyping, splitting=should_split)
+            sequences_with_locations_path = paths["SEQUENCES_WITH_LOCATION"]
+            pdf_path = reporter.generate_report(
+                final_table_path=output_dir / 'final_table.tsv',
+                sequences_with_locations_path=sequences_with_locations_path,
+                output_pdf_name="PyHIV_report_all_sequences.pdf"
+            )
+            logging.info(f"PDF report generated: {pdf_path}")
+        except Exception as e: # pragma: no cover
+            logging.exception("Error generating PDF report — continuing without it.")
+
+
+def process_fasta_sequence(
+    fasta,
+    final_table: pd.DataFrame,
+    paths: dict,
+    subtyping: bool,
+    splitting_mode: str,
+    should_split: bool,
+    output_dir: Path,
+    n_jobs: int | None,
+    alignment_tool: str,
+    kmer_size: int,
+    reference_top_k: int,
+    allowed_reference_accessions,
+    reference_sequences: pd.DataFrame,
+    metadata_by_accession: dict,
+) -> pd.DataFrame:
         sequence_name = fasta.id
         file_name = fasta.annotations.get("source_file", "-")
         sequence_length = len(str(fasta.seq).replace("-", ""))
         if sequence_length > MAX_HIV1_SEQUENCE_LENGTH:
             logging.warning("%s Skipping sequence '%s'.", SEQUENCE_TOO_LONG_WARNING, sequence_name)
-            continue
+            return final_table
 
         reference_dir = (
             paths["REFERENCE_GENOMES_FASTAS_DIR"]
@@ -132,7 +198,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
         )
 
         if best_alignment is None:
-            continue
+            return final_table
 
         test_aligned, ref_aligned, ref_file, alignment_scores = best_alignment
         splitting_test_aligned = test_aligned
@@ -154,10 +220,15 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
                 metadata_by_accession,
                 top_n=DEFAULT_CLOSEST_SUBTYPES_COUNT,
             )
+            subtype_score_warning_text = subtype_score_warning(
+                alignment_scores,
+                metadata_by_accession,
+            )
         else:
             group = NO_SUBTYPING_LABEL
             subtype = NO_SUBTYPING_LABEL
             closest_subtypes = NO_SUBTYPING_LABEL
+            subtype_score_warning_text = ""
 
         # save a fasta file with the best alignment
         output_label = sequence_output_label(file_name, sequence_name)
@@ -190,6 +261,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
                         group,
                         subtype,
                         closest_subtypes,
+                        subtype_score_warning_text,
                         "-",
                         "-",
                         "-",
@@ -198,7 +270,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
                         [final_table, pd.DataFrame([row_data], columns=final_table.columns)],
                         ignore_index=True
                     )
-                    continue
+                    return final_table
 
                 splitting_test_aligned, splitting_ref_aligned, splitting_ref_file = hxb2_alignment
                 splitting_alignment_file = output_dir / f"{SPLITTING_ALIGNMENT_PREFIX}_{output_label}.fasta"
@@ -254,33 +326,27 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
                 group,
                 subtype,
                 closest_subtypes,
+                subtype_score_warning_text,
                 splitting_accession,
                 str(region).strip("[]"),
                 str(present_regions).strip("[]"),
             ]
         else:
-            row_data = [file_name, sequence_name, accession, group, subtype, closest_subtypes]
+            row_data = [
+                file_name,
+                sequence_name,
+                accession,
+                group,
+                subtype,
+                closest_subtypes,
+                subtype_score_warning_text,
+            ]
 
         final_table = pd.concat(
             [final_table, pd.DataFrame([row_data], columns=final_table.columns)],
             ignore_index=True
         )
-
-    final_table.to_csv(output_dir / 'final_table.tsv', sep='\t', index=False)
-    
-    # Generate PDF report if requested
-    if reporting:
-        try:
-            reporter = PyHIVReporter(output_dir, subtyping=subtyping, splitting=should_split)
-            sequences_with_locations_path = paths["SEQUENCES_WITH_LOCATION"]
-            pdf_path = reporter.generate_report(
-                final_table_path=output_dir / 'final_table.tsv',
-                sequences_with_locations_path=sequences_with_locations_path,
-                output_pdf_name="PyHIV_report_all_sequences.pdf"
-            )
-            logging.info(f"PDF report generated: {pdf_path}")
-        except Exception as e: # pragma: no cover
-            logging.exception("Error generating PDF report — continuing without it.")
+        return final_table
 
 
 def final_table_columns_for_splitting(should_split: bool) -> list[str]:
@@ -394,7 +460,40 @@ def summarize_closest_subtypes(
     metadata_by_accession: dict[str, dict[str, str]],
     top_n: int = DEFAULT_CLOSEST_SUBTYPES_COUNT,
 ) -> str:
-    closest: list[str] = []
+    closest = ranked_closest_subtype_scores(alignment_scores, metadata_by_accession, top_n=top_n)
+    return "; ".join(
+        f"{group}:{subtype} (score={score})"
+        for group, subtype, score in closest
+    ) if closest else "-"
+
+
+def subtype_score_warning(
+    alignment_scores: list[tuple[int, str]],
+    metadata_by_accession: dict[str, dict[str, str]],
+    threshold: float = LOW_SCORE_MARGIN_THRESHOLD,
+) -> str:
+    closest = ranked_closest_subtype_scores(alignment_scores, metadata_by_accession, top_n=2)
+    if len(closest) < 2:
+        return ""
+
+    top_score = closest[0][2]
+    second_score = closest[1][2]
+    if top_score <= 0:
+        return ""
+
+    score_margin = (top_score - second_score) / top_score
+    if score_margin <= threshold:
+        return LOW_SCORE_MARGIN_WARNING
+
+    return ""
+
+
+def ranked_closest_subtype_scores(
+    alignment_scores: list[tuple[int, str]],
+    metadata_by_accession: dict[str, dict[str, str]],
+    top_n: int | None = DEFAULT_CLOSEST_SUBTYPES_COUNT,
+) -> list[tuple[str, str, int]]:
+    closest: list[tuple[str, str, int]] = []
     seen: set[tuple[str, str]] = set()
 
     for score, reference_name in sorted(alignment_scores, key=lambda item: (-item[0], item[1])):
@@ -407,11 +506,11 @@ def summarize_closest_subtypes(
             continue
 
         seen.add(key)
-        closest.append(f"{group}:{subtype} (score={score})")
-        if len(closest) == top_n:
+        closest.append((group, subtype, score))
+        if top_n is not None and len(closest) == top_n:
             break
 
-    return "; ".join(closest) if closest else "-"
+    return closest
 
 
 def selected_reference_accessions(

@@ -38,6 +38,7 @@ class TestPyHIVReporter(TestCase):
                 "Group": "M",
                 "Subtype": "C",
                 "Closest Subtypes": "M:C (score=100); M:B (score=95)",
+                "Subtype Score Warning": "Low score margin: review top 3 subtype matches",
                 "Most Matching Gene Region": "env",
                 "Present Gene Regions": "env, nef",
             }
@@ -113,6 +114,10 @@ class TestPyHIVReporter(TestCase):
         mock_render.assert_called()
         self.assertEqual(mock_render.call_args.kwargs["group"], "M")
         self.assertEqual(mock_render.call_args.kwargs["closest_subtypes"], "M:C (score=100); M:B (score=95)")
+        self.assertEqual(
+            mock_render.call_args.kwargs["subtype_score_warning"],
+            "Low score margin: review top 3 subtype matches",
+        )
         self.assertTrue(out_path.exists() or out_path.name.endswith(".pdf"))
         self.assertTrue(isinstance(out_path, Path))
         pdf_context is not None

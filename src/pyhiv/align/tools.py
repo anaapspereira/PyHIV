@@ -427,7 +427,7 @@ def _drop_query_insertions(query_aligned: str, ref_aligned: str) -> Tuple[str, s
         projected_ref.append(ref_base)
 
     if dropped_insertions:
-        logging.warning(
+        logging.debug(
             "Dropped %d query insertion column(s) to keep alignment in reference coordinates.",
             dropped_insertions,
         )
