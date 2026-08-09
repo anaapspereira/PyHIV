@@ -408,6 +408,11 @@ def update_reference_dataset(reference_dir, email, ncbi_api_key, refresh_feature
         click.secho(f"Error updating reference dataset: {exc}", fg='red', err=True)
         sys.exit(1)
 
+    updated_rows = getattr(result, "updated_rows", 0)
+    lanl_fasta_files_removed = getattr(result, "lanl_fasta_files_removed", 0)
+    pending_ncbi_references = getattr(result, "pending_ncbi_references", 0)
+    pending_ncbi_accessions = getattr(result, "pending_ncbi_accessions", ())
+
     if result.up_to_date:
         click.secho("Reference dataset is up to date.", fg='green')
     elif dry_run:
@@ -418,8 +423,11 @@ def update_reference_dataset(reference_dir, email, ncbi_api_key, refresh_feature
                 f"LANL alignment {'would be refreshed' if result.lanl_alignment_updated else 'is current'}; "
                 f"{result.lanl_fasta_files_added} LANL FASTA file(s) would be added; "
                 f"{result.lanl_fasta_files_updated} LANL FASTA file(s) would be updated; "
+                f"{lanl_fasta_files_removed} stale LANL FASTA file(s) would be removed; "
                 f"{result.added_sequences} sequence(s) would be added; "
                 f"{result.added_rows} TSV row(s) would be added; "
+                f"{updated_rows} TSV row(s) would be updated; "
+                f"{pending_ncbi_references} authoritative reference(s) pending NCBI; "
                 f"{result.failed_sequences} sequence(s) would be skipped."
             ),
             fg='yellow',
@@ -432,16 +440,25 @@ def update_reference_dataset(reference_dir, email, ncbi_api_key, refresh_feature
                 f"LANL alignment {'refreshed' if result.lanl_alignment_updated else 'already current'}; "
                 f"{result.lanl_fasta_files_added} LANL FASTA file(s) added; "
                 f"{result.lanl_fasta_files_updated} LANL FASTA file(s) updated; "
+                f"{lanl_fasta_files_removed} stale LANL FASTA file(s) removed; "
                 f"{result.added_sequences} sequence(s) added; "
                 f"{result.added_rows} TSV row(s) added; "
+                f"{updated_rows} TSV row(s) updated; "
                 f"{result.updated_feature_rows} feature row(s) updated; "
+                f"{pending_ncbi_references} authoritative reference(s) pending NCBI; "
                 f"{result.failed_sequences} sequence(s) skipped."
             ),
             fg='green',
         )
+        if pending_ncbi_accessions:
+            click.secho(
+                "Authoritative reference pending NCBI: "
+                + ", ".join(pending_ncbi_accessions),
+                fg='yellow',
+            )
         if result.failed_accessions:
             click.secho(
-                "Skipped unavailable GenBank accession(s): "
+                "Skipped GenBank accession(s): "
                 + ", ".join(result.failed_accessions),
                 fg='yellow',
             )
