@@ -6,6 +6,7 @@ from .align_with_reference import (
     calculate_alignment_score,
     process_alignment,
     reference_accession_from_name,
+    resolve_worker_count,
 )
 from .tools import (
     ALIGNMENT_TOOL_CHOICES,
