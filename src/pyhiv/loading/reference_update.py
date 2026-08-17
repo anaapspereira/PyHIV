@@ -481,22 +481,6 @@ def extract_lanl_alignment_content(html: str) -> str:
     return content + "\n"
 
 
-def sync_reference_fastas_from_lanl_alignment(
-    alignment_csv: str,
-    references_dir: Path,
-    dry_run: bool = False,
-) -> dict[str, int]:
-    lanl_records = parse_lanl_alignment_records(alignment_csv)
-    desired_references = build_desired_reference_map(lanl_records, ())
-    result = reconcile_reference_fastas(
-        desired_references.values(),
-        references_dir,
-        dry_run=dry_run,
-    )
-    result["records"] = len(lanl_records)
-    return result
-
-
 def build_desired_reference_map(
     alignment_records: list[LanlReferenceRecord],
     crf_references: tuple[CrfReference, ...],
@@ -807,19 +791,6 @@ def parse_lanl_alignment_records(alignment_csv: str) -> list[LanlReferenceRecord
         )
 
     return records
-
-
-def stale_reference_paths_for_accession(
-    references_dir: Path,
-    accession: str,
-    expected_names: set[str],
-) -> list[Path]:
-    safe_accession = sanitize_filename_part(accession)
-    return [
-        path
-        for path in references_dir.glob(f"{safe_accession}-*.fasta")
-        if path.name not in expected_names
-    ]
 
 
 def load_lanl_crf_references() -> dict[str, tuple[CrfReference, ...]]:
@@ -1251,14 +1222,6 @@ def reference_accessions_in_dir(references_dir: Path) -> set[str]:
     }
 
 
-def reference_keys_in_dir(references_dir: Path) -> set[str]:
-    keys: set[str] = set()
-    for path in references_dir.glob("*.fasta"):
-        parsed = parse_reference_name(path.stem)
-        keys.add(reference_key(parsed["accession"], parsed["subtype"]))
-    return keys
-
-
 def normalize_crf_references(crf_references: CrfReferenceCollection) -> tuple[CrfReference, ...]:
     values = crf_references.values() if isinstance(crf_references, dict) else crf_references
 
@@ -1374,10 +1337,6 @@ def validate_hiv1_complete_or_near_complete(record, sequence: str) -> None:
         raise GenBankRecordPartial(
             f"{getattr(record, 'id', 'unknown')} length {sequence_length}"
         )
-
-
-def has_partial_genome_annotation(text: str) -> bool:
-    return partial_genome_annotation_re().search(text) is not None
 
 
 def has_subgenomic_sequence_annotation(text: str) -> bool:
