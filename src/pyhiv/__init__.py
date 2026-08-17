@@ -112,7 +112,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     ) if subtyping and (should_split or reference_group_filter_requested) else None
 
     final_table_columns = final_table_columns_for_splitting(should_split)
-    final_table = pd.DataFrame(columns=final_table_columns)
+    rows: list[list] = []
 
     sequence_context = nullcontext(user_fastas)
     if show_progress:
@@ -125,9 +125,9 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
 
     with sequence_context as sequences, ProcessPoolExecutor(max_workers=resolve_worker_count(n_jobs)) as executor:
         for fasta in sequences:
-            final_table = process_fasta_sequence(
+            process_fasta_sequence(
                 fasta=fasta,
-                final_table=final_table,
+                rows=rows,
                 paths=paths,
                 subtyping=subtyping,
                 splitting_mode=splitting_mode,
@@ -143,6 +143,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
                 executor=executor,
             )
 
+    final_table = pd.DataFrame(rows, columns=final_table_columns)
     final_table.to_csv(output_dir / 'final_table.tsv', sep='\t', index=False)
     
     # Generate PDF report if requested
@@ -162,7 +163,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
 
 def process_fasta_sequence(
     fasta,
-    final_table: pd.DataFrame,
+    rows: list[list],
     paths: dict,
     subtyping: bool,
     splitting_mode: str,
@@ -176,13 +177,13 @@ def process_fasta_sequence(
     reference_sequences: pd.DataFrame,
     metadata_by_accession: dict,
     executor: Executor | None = None,
-) -> pd.DataFrame:
+) -> None:
         sequence_name = fasta.id
         file_name = fasta.annotations.get("source_file", "-")
         sequence_length = len(str(fasta.seq).replace("-", ""))
         if sequence_length > MAX_HIV1_SEQUENCE_LENGTH:
             logging.warning("%s Skipping sequence '%s'.", SEQUENCE_TOO_LONG_WARNING, sequence_name)
-            return final_table
+            return
 
         reference_dir = (
             paths["REFERENCE_GENOMES_FASTAS_DIR"]
@@ -202,7 +203,7 @@ def process_fasta_sequence(
         )
 
         if best_alignment is None:
-            return final_table
+            return
 
         test_aligned, ref_aligned, ref_file, alignment_scores = best_alignment
         splitting_test_aligned = test_aligned
@@ -271,11 +272,8 @@ def process_fasta_sequence(
                         "-",
                         "-",
                     ]
-                    final_table = pd.concat(
-                        [final_table, pd.DataFrame([row_data], columns=final_table.columns)],
-                        ignore_index=True
-                    )
-                    return final_table
+                    rows.append(row_data)
+                    return
 
                 splitting_test_aligned, splitting_ref_aligned, splitting_ref_file = hxb2_alignment
                 splitting_alignment_file = output_dir / f"{SPLITTING_ALIGNMENT_PREFIX}_{output_label}.fasta"
@@ -347,11 +345,7 @@ def process_fasta_sequence(
                 subtype_score_warning_text,
             ]
 
-        final_table = pd.concat(
-            [final_table, pd.DataFrame([row_data], columns=final_table.columns)],
-            ignore_index=True
-        )
-        return final_table
+        rows.append(row_data)
 
 
 def final_table_columns_for_splitting(should_split: bool) -> list[str]:
