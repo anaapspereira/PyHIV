@@ -62,16 +62,22 @@ def sequence_output_label(file_name: str | None, sequence_name: str) -> str:
     """
     Build the output filename label for a sequence.
 
-    Combines the source FASTA file stem with the sequence id so that
-    same-named records from different input files don't collide. Used both
-    when PyHIV writes alignment/split files and when PyHIVReporter looks
+    Combines the source FASTA file's path (relative to the input directory,
+    extension stripped) with the sequence id so that same-named records from
+    different input files don't collide — including files with the same name
+    in different subdirectories, since input discovery is recursive. Used
+    both when PyHIV writes alignment/split files and when PyHIVReporter looks
     them back up, so the two must stay in sync.
     """
     sequence_label = safe_output_label(sequence_name)
     if not file_name or file_name == "-":
         return sequence_label
 
-    file_stem = Path(file_name).stem
+    file_path = Path(file_name)
+    if not file_path.name:
+        return sequence_label
+
+    file_stem = file_path.with_suffix("").as_posix()
     if not file_stem:
         return sequence_label
 
