@@ -15,8 +15,7 @@ from pyhiv.align import (
 )
 import logging
 from pyhiv.config import get_reference_base_dir
-
-SUPPORTED_FASTA_EXTENSIONS = {'.fasta', '.fa', '.fna', '.ffn'}
+from pyhiv.loading import SUPPORTED_FASTA_EXTENSIONS, discover_fasta_files
 
 
 def validate_n_jobs(ctx, param, value):
@@ -66,9 +65,9 @@ def validate_splitting(ctx, param, value):
         raise click.BadParameter(str(exc)) from exc
 
 
-def count_fasta_files(directory):
-    """Count FASTA files in the input directory."""
-    return sum(1 for f in Path(directory).rglob('*') if f.is_file() and f.suffix.lower() in SUPPORTED_FASTA_EXTENSIONS)
+def count_fasta_files(directory, exclude_dirs=()):
+    """Count FASTA files in the input directory and its subdirectories."""
+    return len(discover_fasta_files(Path(directory), exclude_dirs=exclude_dirs))
 
 
 @click.command()
@@ -234,8 +233,9 @@ def main(
         click.secho(f"Warning: Output directory '{output_path}' already exists. Files may be overwritten.",
                     fg='yellow', err=True)
 
-    # Count input files
-    num_files = count_fasta_files(fastas_dir)
+    # Count input files, excluding this run's own output directory so a
+    # rerun doesn't count (and later re-ingest) previously generated results.
+    num_files = count_fasta_files(fastas_dir, exclude_dirs=[output_path])
     if num_files == 0:
         click.secho("Error: No FASTA files found in the input directory.", fg='red', err=True)
         sys.exit(1)
@@ -334,13 +334,10 @@ def validate(fastas_dir):
 
     # List files if not too many
     if num_files <= 10:
-        files = []
-        for ext in SUPPORTED_FASTA_EXTENSIONS:
-            files.extend(Path(fastas_dir).rglob(f'*{ext}'))
-        files = list({f.resolve(): f for f in files}.values())  # Remove duplicates, preserve Path objects
+        files = discover_fasta_files(Path(fastas_dir))
         click.echo("\nFiles:")
         for f in files:
-            click.echo(f"  • {f.name}")
+            click.echo(f"  • {f.relative_to(fastas_dir)}")
 
 
 @click.group('update')
