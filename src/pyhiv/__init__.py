@@ -210,11 +210,11 @@ def process_fasta_sequence(
         splitting_ref_file = ref_file
 
         # Extract reference information
-        ref_file_parts = Path(ref_file).stem.split('-')
-        accession = ref_file_parts[0]
+        accession = reference_accession_from_name(ref_file)
         if subtyping:
             reference_metadata = metadata_by_accession.get(accession, {})
             group = reference_metadata.get("group", "Unknown")
+            ref_file_parts = Path(ref_file).stem.split('-')
             subtype = reference_metadata.get(
                 "subtype",
                 ref_file_parts[1] if len(ref_file_parts) > 1 else "Unknown",
@@ -287,7 +287,7 @@ def process_fasta_sequence(
                     splitting_test_aligned,
                 )
 
-            splitting_accession = Path(splitting_ref_file).stem.split('-')[0]
+            splitting_accession = reference_accession_from_name(splitting_ref_file)
             # Retrieve gene ranges
             gene_ranges = reference_features(reference_sequences, splitting_accession)
 
