@@ -1,11 +1,12 @@
 __version__ = "0.1.0"
 
 import ast
+from concurrent.futures import Executor, ProcessPoolExecutor
 from contextlib import nullcontext
 from pathlib import Path
 import pandas as pd
 
-from pyhiv.align import align_with_references, reference_accession_from_name
+from pyhiv.align import align_with_references, reference_accession_from_name, resolve_worker_count
 from pyhiv.config import get_reference_paths, validate_reference_paths
 from pyhiv.loading import read_input_fastas
 from pyhiv.split import (
@@ -99,7 +100,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     output_dir = Path(output_dir) if output_dir else Path('PyHIV_results')
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    user_fastas = read_input_fastas(fastas_dir)
+    user_fastas = read_input_fastas(fastas_dir, exclude_dirs=[output_dir])
     reference_sequences = pd.read_csv(paths["SEQUENCES_WITH_LOCATION"], sep='\t')
     metadata_by_accession = build_reference_metadata(reference_sequences)
     reference_group_filter_requested = reference_groups is not None
@@ -122,7 +123,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
             label="Processing sequences",
         )
 
-    with sequence_context as sequences:
+    with sequence_context as sequences, ProcessPoolExecutor(max_workers=resolve_worker_count(n_jobs)) as executor:
         for fasta in sequences:
             final_table = process_fasta_sequence(
                 fasta=fasta,
@@ -139,6 +140,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
                 allowed_reference_accessions=allowed_reference_accessions,
                 reference_sequences=reference_sequences,
                 metadata_by_accession=metadata_by_accession,
+                executor=executor,
             )
 
     final_table.to_csv(output_dir / 'final_table.tsv', sep='\t', index=False)
@@ -173,6 +175,7 @@ def process_fasta_sequence(
     allowed_reference_accessions,
     reference_sequences: pd.DataFrame,
     metadata_by_accession: dict,
+    executor: Executor | None = None,
 ) -> pd.DataFrame:
         sequence_name = fasta.id
         file_name = fasta.annotations.get("source_file", "-")
@@ -195,6 +198,7 @@ def process_fasta_sequence(
             reference_top_k=reference_top_k,
             allowed_reference_accessions=allowed_reference_accessions,
             include_alignment_scores=True,
+            executor=executor,
         )
 
         if best_alignment is None:
@@ -252,6 +256,7 @@ def process_fasta_sequence(
                     alignment_tool=alignment_tool,
                     kmer_size=kmer_size,
                     reference_top_k=reference_top_k,
+                    executor=executor,
                 )
                 if hxb2_alignment is None:
                     row_data = [
@@ -328,8 +333,8 @@ def process_fasta_sequence(
                 closest_subtypes,
                 subtype_score_warning_text,
                 splitting_accession,
-                str(region).strip("[]"),
-                str(present_regions).strip("[]"),
+                ", ".join(region) if region else "-",
+                ", ".join(present_regions) if present_regions else "-",
             ]
         else:
             row_data = [
