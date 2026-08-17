@@ -270,6 +270,68 @@ class TestPyHIV(TestCase):
         self.assertTrue((self.output_dir / f"best_alignment_sample_query.fasta").exists())
         self.assertTrue((self.output_dir / f"{SPLITTING_ALIGNMENT_PREFIX}_sample_query.fasta").exists())
 
+    @patch("pyhiv.align_with_references")
+    @patch("pyhiv.read_input_fastas")
+    @patch("pyhiv.validate_reference_paths")
+    @patch("pyhiv.get_reference_paths")
+    def test_hxb2_fallback_alignment_failure_records_placeholder_row(
+        self,
+        mock_paths,
+        mock_validate,
+        mock_read_fastas,
+        mock_align,
+    ):
+        """When the HXB2 fallback alignment fails, the row keeps subtyping data but placeholders for splitting."""
+        sequences_with_locations = self.output_dir / "sequences_with_locations.tsv"
+        pd.DataFrame([
+            {
+                "accession": "ACCNO",
+                "group": "M",
+                "subtype": "B",
+                "features": "None",
+            },
+            {
+                "accession": "K03455",
+                "group": "M",
+                "subtype": "B",
+                "features": "{'gag': (1, 3)}",
+            },
+        ]).to_csv(sequences_with_locations, sep="\t", index=False)
+
+        mock_paths.return_value = {
+            "SEQUENCES_WITH_LOCATION": sequences_with_locations,
+            "REFERENCE_GENOMES_FASTAS_DIR": REFERENCE_BASE / "reference_fastas",
+            "HXB2_GENOME_FASTA_DIR": REFERENCE_BASE / "HXB2_fasta",
+        }
+        query = SeqRecord(Seq("AAA"), id="query")
+        query.annotations["source_file"] = "sample.fasta"
+        mock_read_fastas.return_value = [query]
+        mock_align.side_effect = [
+            ("AAA", "AAA", "ACCNO-B", [(5, "ACCNO-B"), (4, "K03455-B")]),
+            None,
+        ]
+
+        PyHIV(
+            fastas_dir=str(DATA_DIR),
+            subtyping=True,
+            splitting=True,
+            output_dir=str(self.output_dir),
+            reporting=False,
+        )
+
+        self.assertEqual(mock_align.call_count, 2)
+
+        table = pd.read_csv(self.output_dir / "final_table.tsv", sep='\t')
+        self.assertEqual(len(table), 1)
+        self.assertEqual(table.loc[0, "Reference"], "ACCNO")
+        self.assertEqual(table.loc[0, "Group"], "M")
+        self.assertEqual(table.loc[0, "Subtype"], "B")
+        self.assertEqual(table.loc[0, "Splitting Reference"], "-")
+        self.assertEqual(table.loc[0, "Most Matching Gene Region"], "-")
+        self.assertEqual(table.loc[0, "Present Gene Regions"], "-")
+        self.assertTrue((self.output_dir / "best_alignment_sample_query.fasta").exists())
+        self.assertFalse((self.output_dir / f"{SPLITTING_ALIGNMENT_PREFIX}_sample_query.fasta").exists())
+
     @patch("pyhiv.reference_features", return_value={"gag": (1, 3)})
     @patch("pyhiv.align_with_references")
     @patch("pyhiv.read_input_fastas")
