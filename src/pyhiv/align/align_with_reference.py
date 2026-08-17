@@ -265,9 +265,12 @@ def calculate_alignment_score(seq1: str, seq2: str) -> int:
     int
         Number of positions where the sequences are equal.
     """
-    try:
-        return sum(1 for seq1_nt, seq2_nt in zip(seq1, seq2)
-               if seq1_nt.upper() == seq2_nt.upper() and seq1_nt != "-")
-    except ValueError:
-        logging.error("Sequences have different lengths, alignment might be incorrect.")
+    if len(seq1) != len(seq2):
+        logging.error(
+            "Sequences have different lengths (%d vs %d); alignment might be incorrect.",
+            len(seq1), len(seq2),
+        )
         return 0
+
+    return sum(1 for seq1_nt, seq2_nt in zip(seq1, seq2)
+           if seq1_nt.upper() == seq2_nt.upper() and seq1_nt != "-")
