@@ -178,10 +178,10 @@ PyHIV_results/
 │   ├── <file_stem>_<sequence>_gag.fasta
 │   └── ...
 ├── pol/
-│   ├── <sequence>_pol.fasta
+│   ├── <file_stem>_<sequence>_pol.fasta
 │   └── ...
 └── env/
-    ├── <sequence>_env.fasta
+    ├── <file_stem>_<sequence>_env.fasta
     └── ...
 ```
 
