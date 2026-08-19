@@ -32,6 +32,27 @@ class TestAlignmentTools(TestCase):
         with self.assertRaises(ValueError):
             tools.normalize_alignment_tool("edlib-NW")
 
+    def test_validate_alignment_tool_available_returns_normalized_tool(self):
+        with mock.patch("pyhiv.align.tools.get_mafft_binary", return_value="/usr/local/bin/mafft"):
+            self.assertEqual(
+                tools.validate_alignment_tool_available("mafft"),
+                tools.MAFFT,
+            )
+
+    def test_validate_alignment_tool_available_parasail_missing_has_install_message(self):
+        with mock.patch.dict("sys.modules", {"parasail": None}):
+            with self.assertRaises(RuntimeError) as ctx:
+                tools.validate_alignment_tool_available("parasail-NW")
+
+        self.assertIn("pip install pyhiv-tools[parasail]", str(ctx.exception))
+
+    def test_validate_alignment_tool_available_mafft_missing_has_install_message(self):
+        with mock.patch("pyhiv.align.tools.get_mafft_binary", return_value=None):
+            with self.assertRaises(RuntimeError) as ctx:
+                tools.validate_alignment_tool_available("MAFFT")
+
+        self.assertIn("Install MAFFT and add it to PATH", str(ctx.exception))
+
     def test_align_sequences_dispatches_to_selected_tool(self):
         test_seq = SeqRecord(Seq("AAA"), id="test")
         ref_seq = SeqRecord(Seq("AAA"), id="ref")

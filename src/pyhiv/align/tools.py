@@ -90,6 +90,54 @@ def align_sequences(
     return aligner(test_seq, ref_seq)
 
 
+def validate_alignment_tool_available(alignment_tool: str | None = DEFAULT_ALIGNMENT_TOOL) -> str:
+    """
+    Validate that the selected alignment backend is usable in this environment.
+
+    Worker-level alignment errors are logged per reference and skipped, so
+    missing optional backends must be detected before the pipeline starts.
+    """
+    tool = normalize_alignment_tool(alignment_tool)
+
+    if tool == EDLIB_HW:
+        try:
+            import edlib  # noqa: F401
+        except ImportError as exc:  # pragma: no cover
+            raise RuntimeError(
+                "edlib is required for alignment_tool='edlib-HW'. "
+                "Install PyHIV dependencies with 'pip install pyhiv-tools' "
+                "or install edlib directly with 'pip install edlib'."
+            ) from exc
+
+    elif tool == PARASAIL_NW:
+        try:
+            import parasail  # noqa: F401
+        except ImportError as exc:
+            raise RuntimeError(
+                "parasail is required for alignment_tool='parasail-NW'. "
+                "Install it with 'pip install pyhiv-tools[parasail]' "
+                "or 'pip install parasail'."
+            ) from exc
+
+    elif tool == MAFFT and get_mafft_binary() is None:
+        raise RuntimeError(
+            "MAFFT support requires a MAFFT executable. "
+            f"Install MAFFT and add it to PATH, or set {MAFFT_BIN_ENV}."
+        )
+
+    elif tool == PYFAMSA:
+        try:
+            import pyfamsa  # noqa: F401
+        except ImportError as exc:  # pragma: no cover
+            raise RuntimeError(
+                "PyFamsa is required for alignment_tool='PyFamsa'. "
+                "Install PyHIV dependencies with 'pip install pyhiv-tools' "
+                "or install pyfamsa directly with 'pip install pyfamsa'."
+            ) from exc
+
+    return tool
+
+
 def edlib_hw_align(test_seq: SeqRecord, ref_seq: SeqRecord) -> Tuple[str, str]:
     """
     Align a shorter query sequence inside a longer reference using edlib HW mode.

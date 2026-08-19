@@ -6,7 +6,12 @@ from contextlib import nullcontext
 from pathlib import Path
 import pandas as pd
 
-from pyhiv.align import align_with_references, reference_accession_from_name, resolve_worker_count
+from pyhiv.align import (
+    align_with_references,
+    reference_accession_from_name,
+    resolve_worker_count,
+    validate_alignment_tool_available,
+)
 from pyhiv.config import get_reference_paths, validate_reference_paths
 from pyhiv.loading import read_input_fastas
 from pyhiv.split import (
@@ -94,6 +99,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     paths = get_reference_paths()
     validate_reference_paths(paths)
     splitting_mode = normalize_splitting_mode(splitting, subtyping=subtyping)
+    alignment_tool = validate_alignment_tool_available(alignment_tool)
     should_split = splitting_mode != SPLITTING_MODE_NONE
 
     fastas_dir = Path(fastas_dir)
