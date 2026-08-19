@@ -21,7 +21,7 @@ from pyhiv.report.utils import (
 class PyHIVReporter:
     """Main class for generating PyHIV PDF reports."""
     
-    def __init__(self, output_dir: Path, subtyping: bool, splitting: bool, log_level=logging.INFO):
+    def __init__(self, output_dir: Path, subtyping: bool, splitting: bool, log_level: int | None = None):
         """
         Initialize the reporter with output directory and logger.
 
@@ -34,7 +34,12 @@ class PyHIVReporter:
         splitting : bool
             Whether splitting was performed.
         log_level : int, optional
-            Logging level, by default logging.INFO
+            If given, overrides this logger's level explicitly. By default
+            (None), no handler or level is set here, so this logger
+            propagates to and inherits its effective level from the root
+            logger — e.g. the level the CLI configures from -v/-q — instead
+            of always emitting INFO-level messages regardless of those
+            flags.
         """
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -42,19 +47,9 @@ class PyHIVReporter:
         self.subtyping = subtyping
         self.splitting = splitting
 
-        # Configure logger
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(log_level)
-
-        # Avoid adding duplicate handlers if multiple instances are created
-        if not self.logger.handlers:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                datefmt="%Y-%m-%d %H:%M:%S"
-            )
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
+        if log_level is not None:
+            self.logger.setLevel(log_level)
     
     def generate_report(
         self,
@@ -111,14 +106,34 @@ class PyHIVReporter:
             pages_made = 0
 
             for _, r in ft.iterrows():
+                file_name = str(r["File Name"]) if "File Name" in r else "-"
                 sequence = str(r["Sequence"])
                 accession = str(r["Reference"])
+                splitting_accession = str(r.get("Splitting Reference", accession))
+                group = str(r["Group"]) if self.subtyping and "Group" in r else "No subtyping performed."
                 subtype = str(r["Subtype"]) if self.subtyping else "No subtyping performed."
+                closest_subtypes = str(r["Closest Subtypes"]) if "Closest Subtypes" in r else "-"
+                subtype_score_warning_value = r.get("Subtype Score Warning", "")
+                subtype_score_warning = (
+                    ""
+                    if pd.isna(subtype_score_warning_value)
+                    else str(subtype_score_warning_value)
+                )
                 mm_region = str(r["Most Matching Gene Region"]) if "Most Matching Gene Region" in r else "-"
                 present_regions_raw = parse_present_regions(r.get("Present Gene Regions", "")) if self.splitting else []
 
                 # Find alignment file
-                fasta_path = build_alignment_path(sequence, self.output_dir)
+                alignment_prefix = (
+                    "splitting_alignment"
+                    if self.splitting and splitting_accession not in {"", "-", accession}
+                    else "best_alignment"
+                )
+                fasta_path = build_alignment_path(
+                    sequence,
+                    self.output_dir,
+                    prefix=alignment_prefix,
+                    file_name=file_name,
+                )
                 if not fasta_path.exists():
                     self.logger.warning(f"Alignment FASTA not found for {sequence}: {fasta_path}")
                     continue
@@ -129,11 +144,11 @@ class PyHIVReporter:
                     self.logger.error(f"Error reading {fasta_path}: {e}")
                     continue
 
-                special = is_special_reference(accession, ref_header)
+                special = is_special_reference(splitting_accession, ref_header)
 
                 ref_map, _ = build_ref_to_alignment_map(ref_seq_aln)
 
-                raw_features = features_by_acc.get(accession, {})
+                raw_features = features_by_acc.get(splitting_accession, {})
                 features_genomic = normalize_features(raw_features, special)
                 present_regions = normalize_present_regions(present_regions_raw, special)
 
@@ -149,14 +164,19 @@ class PyHIVReporter:
                 render_sequence_page(
                     pdf=pdf,
                     sequence=sequence,
+                    file_name=file_name,
                     accession=accession,
+                    group=group,
                     subtype=subtype,
+                    closest_subtypes=closest_subtypes,
+                    subtype_score_warning=subtype_score_warning,
                     mm_region=mm_region if mm_region != "-" else "",
                     present_regions=present_regions,
                     features_aln=features_aln,
                     ref_seq_aligned=ref_seq_aln,
                     user_seq_aligned=user_seq_aln,
                     y_positions=y_pos,
+                    splitting_accession=splitting_accession if self.splitting else None,
                 )
 
                 pages_made += 1

@@ -37,6 +37,7 @@
 It produces:
 - Best reference alignment per sequence  
 - Subtype and reference metadata  
+- Ranked top 3 closest HIV-1 subtypes
 - Gene-region–specific FASTA files (optional)  
 - A final summary table (`final_table.tsv`)  
 
@@ -97,9 +98,11 @@ pip install -e ".[dev]"
 - Python 3.10+
 - pandas
 - biopython
+- edlib
 - pyfamsa
 - click
 - matplotlib
+- parasail (optional, only for `--alignment-tool parasail-NW`; install with `pip install pyhiv-tools[parasail]`)
 ## 🚀 Getting Started
 
 ### Quick Start (CLI)
@@ -125,10 +128,14 @@ from pyhiv import PyHIV
 PyHIV(
     fastas_dir="path/to/fasta/files",
     subtyping=True,
-    splitting=True,
+    splitting=True,  # True/"subtype", "hxb2"/"reference", or False/"none"
     output_dir="results_folder",
     n_jobs=4,
-    reporting=True
+    reporting=True,
+    alignment_tool="edlib-HW",
+    kmer_size=15,
+    reference_top_k=30,
+    reference_groups="M"
 )
 ```
 
@@ -138,10 +145,22 @@ PyHIV(
 | ------------ | ------ |-------------------| -------------------------------------------------------------------------- |
 | `fastas_dir` | `str`  | *Required*        | Directory containing user FASTA files.                                     |
 | `subtyping`  | `bool` | `True`            | Aligns against subtype reference genomes. If `False`, aligns only to HXB2. |
-| `splitting`  | `bool` | `True`            | Splits aligned sequences into gene regions.                                |
+| `splitting`  | `bool` or `str` | `True` | Splits aligned sequences into gene regions. Use `True`/`"subtype"` to split by the best subtype reference when it has annotated features, with automatic HXB2 fallback when features are missing; use `"hxb2"`/`"reference"` to subtype but always split against HXB2, or `False`/`"none"` to skip splitting. |
 | `output_dir` | `str`  | `"PyHIV_results"` | Output directory for results.                                              |
 | `n_jobs`     | `int`  | `None`            | Number of parallel jobs for alignment.                                     |
 | `reporting`  | `bool` | `True`            | Generates PDF report with sequence visualizations.                         |
+| `alignment_tool` | `str` | `"edlib-HW"` | Alignment backend: `edlib-HW`, `parasail-NW`/`parasail`, `MAFFT`, or `PyFamsa`. |
+| `kmer_size` | `int` | `15` | K-mer size used to prefilter candidate references. |
+| `reference_top_k` | `int` | `30` | Number of top k-mer ranked references to align. Use `0` to align all references. |
+| `reference_groups` | `str` or iterable | `"M"` | HIV-1 reference groups used for subtyping. Use `"M,N,O,P"` to include groups N, O, and P. |
+
+`edlib-HW` is the default and projects alignments onto full-reference genome coordinates. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` remain available as alternatives. Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `reference_top_k=0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; set `reference_groups="M,N,O,P"` to include groups N, O, and P. `edlib` and `PyFamsa` are installed with PyHIV. `parasail` is an optional extra — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon). `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
+
+When `subtyping=False`, any active splitting mode is treated as HXB2-based splitting, even if `splitting="subtype"` is provided.
+
+When `subtyping=True` and `splitting=True`, PyHIV keeps the selected subtype reference in the `Reference` column. If that reference has no annotated `features` in `sequences_with_locations.tsv`, PyHIV splits against HXB2 instead and records `K03455` in `Splitting Reference`; the PDF report also shows the splitting reference.
+
+Input sequences longer than 12000 nucleotides are skipped with this warning: `The submitted sequence is longer than the HIV-1 genome.`
 
 ### 📂 Output Structure
 
@@ -150,18 +169,19 @@ After running PyHIV, your output directory (default: PyHIV_results/) will contai
 ```
 PyHIV_results/
 │
-├── best_alignment_<sequence>.fasta     # Alignment to best reference
+├── best_alignment_<file_stem>_<sequence>.fasta      # Alignment to best reference
+├── splitting_alignment_<file_stem>_<sequence>.fasta # HXB2 alignment when splitting uses HXB2 with subtyping
 ├── final_table.tsv                     # Summary of results
 ├── PyHIV_report_all_sequences.pdf     # PDF report (if reporting=True)
 │
 ├── gag/
-│   ├── <sequence>_gag.fasta
+│   ├── <file_stem>_<sequence>_gag.fasta
 │   └── ...
 ├── pol/
-│   ├── <sequence>_pol.fasta
+│   ├── <file_stem>_<sequence>_pol.fasta
 │   └── ...
 └── env/
-    ├── <sequence>_env.fasta
+    ├── <file_stem>_<sequence>_env.fasta
     └── ...
 ```
 
@@ -169,9 +189,13 @@ PyHIV_results/
 
 | Column                        | Description                                     |
 | ----------------------------- | ----------------------------------------------- |
+| **File Name**                 | Source FASTA file name                          |
 | **Sequence**                  | Input sequence name                             |
 | **Reference**                 | Best matching reference accession               |
+| **Group**                     | Predicted HIV-1 reference group                 |
 | **Subtype**                   | Predicted HIV-1 subtype                         |
+| **Closest Subtypes**          | Top 3 closest group/subtype calls by alignment score |
+| **Splitting Reference**       | Reference accession used for gene splitting     |
 | **Most Matching Gene Region** | Region with highest similarity                  |
 | **Present Gene Regions**      | All detected gene regions with valid alignments |
 
@@ -202,8 +226,8 @@ pyhiv validate sequences/
 
 | Option | Description |
 |--------|-------------|
-| `--subtyping` / `--no-subtyping` | Enable/disable HIV-1 subtyping (default: enabled) |
-| `--splitting` / `--no-splitting` | Enable/disable gene region splitting (default: enabled) |
+| `--subtyping BOOL` | Enable/disable HIV-1 subtyping (default: `true`) |
+| `--splitting TEXT` | Splitting mode: `true`/`subtype`, `hxb2`/`reference`, or `false`/`none` (default: `true`). If `--subtyping false`, active splitting uses HXB2. |
 | `-o`, `--output-dir PATH` | Output directory (default: `PyHIV_results`) |
 | `-j`, `--n-jobs INTEGER` | Number of parallel jobs (default: all CPUs) |
 | `-v`, `--verbose` | Detailed output |
@@ -218,12 +242,17 @@ pyhiv run data/sequences/
 
 **Alignment only (no subtyping or splitting):**
 ```bash
-pyhiv run data/sequences/ --no-subtyping --no-splitting
+pyhiv run data/sequences/ --subtyping false --splitting false
 ```
 
 **Subtyping without gene splitting:**
 ```bash
-pyhiv run data/sequences/ --no-splitting
+pyhiv run data/sequences/ --splitting false
+```
+
+**Subtyping with HXB2-based splitting:**
+```bash
+pyhiv run data/sequences/ --splitting hxb2
 ```
 
 **Parallel processing for large datasets:**

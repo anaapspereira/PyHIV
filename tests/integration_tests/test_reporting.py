@@ -22,9 +22,12 @@ class TestReportingIntegration(TestCase):
             final_table = pd.DataFrame(
                 [
                     {
+                        "File Name": "sample.fasta",
                         "Sequence": "seq1",
                         "Reference": "K03455",
+                        "Group": "M",
                         "Subtype": "B",
+                        "Closest Subtypes": "M:B (score=120)",
                         "Most Matching Gene Region": "gag",
                         "Present Gene Regions": "['gag']",
                     }
@@ -49,7 +52,13 @@ class TestReportingIntegration(TestCase):
             output_dir = dpath
             ref_seq = "ACGT" * 60
             user_seq = "-" * 10 + ("ACGT" * 40) + "-" * 10
-            self.write_alignment_fasta(output_dir / "best_alignment_seq1.fasta", "K03455-B", ref_seq, "seq1", user_seq)
+            self.write_alignment_fasta(
+                output_dir / "best_alignment_sample_seq1.fasta",
+                "K03455-B",
+                ref_seq,
+                "seq1",
+                user_seq,
+            )
 
             reporter = PyHIVReporter(output_dir, subtyping=True, splitting=True)
             pdf_path = reporter.generate_report(
@@ -59,5 +68,3 @@ class TestReportingIntegration(TestCase):
             )
 
             self.assertTrue(pdf_path.exists() and pdf_path.stat().st_size > 0)
-
-

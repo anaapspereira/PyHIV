@@ -1,4 +1,5 @@
 import io
+import logging
 import tempfile
 from pathlib import Path
 from unittest import TestCase, mock
@@ -25,14 +26,19 @@ class TestPyHIVReporter(TestCase):
             {
                 "Sequence": "seq1",
                 "Reference": "ref1",
+                "Group": "M",
                 "Subtype": "B",
+                "Closest Subtypes": "M:B (score=100); M:C (score=95)",
                 "Most Matching Gene Region": "gag",
                 "Present Gene Regions": "gag, pol",
             },
             {
                 "Sequence": "seq2",
                 "Reference": "ref2",
+                "Group": "M",
                 "Subtype": "C",
+                "Closest Subtypes": "M:C (score=100); M:B (score=95)",
+                "Subtype Score Warning": "Low score margin: review top 3 subtype matches",
                 "Most Matching Gene Region": "env",
                 "Present Gene Regions": "env, nef",
             }
@@ -47,6 +53,18 @@ class TestPyHIVReporter(TestCase):
 
     def tearDown(self):
         self.temp_dir.cleanup()
+
+    # ---- Logger configuration ----
+    def test_explicit_log_level_overrides_root_logger(self):
+        """Passing log_level should set it on the reporter's own logger."""
+        reporter = PyHIVReporter(self.tmp_path, subtyping=True, splitting=True, log_level=logging.DEBUG)
+        self.addCleanup(reporter.logger.setLevel, logging.NOTSET)
+        self.assertEqual(reporter.logger.level, logging.DEBUG)
+
+    def test_default_log_level_is_unset(self):
+        """Without an explicit log_level, the reporter should inherit from the root logger."""
+        reporter = PyHIVReporter(self.tmp_path, subtyping=True, splitting=True)
+        self.assertEqual(reporter.logger.level, logging.NOTSET)
 
     # ---- Error handling ----
     def test_missing_columns_in_final_table(self):
@@ -94,9 +112,43 @@ class TestPyHIVReporter(TestCase):
         # Assertions
         mock_path.assert_called()
         mock_render.assert_called()
+        self.assertEqual(mock_render.call_args.kwargs["group"], "M")
+        self.assertEqual(mock_render.call_args.kwargs["closest_subtypes"], "M:C (score=100); M:B (score=95)")
+        self.assertEqual(
+            mock_render.call_args.kwargs["subtype_score_warning"],
+            "Low score margin: review top 3 subtype matches",
+        )
         self.assertTrue(out_path.exists() or out_path.name.endswith(".pdf"))
         self.assertTrue(isinstance(out_path, Path))
         pdf_context is not None
+
+    @mock.patch("pyhiv.report.reporter.PdfPages")
+    @mock.patch("pyhiv.report.reporter.render_sequence_page")
+    @mock.patch("pyhiv.report.reporter.project_features_to_alignment", side_effect=lambda f, m: f)
+    @mock.patch("pyhiv.report.reporter.build_ref_to_alignment_map", return_value=({"A": 1}, None))
+    @mock.patch("pyhiv.report.reporter.is_special_reference", return_value=True)
+    @mock.patch("pyhiv.report.reporter.read_alignment_fasta")
+    @mock.patch("pyhiv.report.reporter.build_alignment_path")
+    @mock.patch("pyhiv.report.reporter.parse_features", return_value={"gag": (1, 10)})
+    @mock.patch("pyhiv.report.reporter.parse_present_regions", return_value=["gag"])
+    @mock.patch("pyhiv.report.reporter.normalize_features", return_value={"gag": (1, 10)})
+    @mock.patch("pyhiv.report.reporter.normalize_present_regions", return_value=["gag"])
+    def test_generate_report_no_subtyping_group_label(
+        self,
+        mock_norm_pr, mock_norm_feat, mock_pparser, mock_pf,
+        mock_path, mock_read_fa, mock_special, mock_map, mock_proj, mock_render, mock_pdf,
+    ):
+        reporter = PyHIVReporter(self.tmp_path, subtyping=False, splitting=True)
+        fake_fasta = self.tmp_path / "seq1.fasta"
+        fake_fasta.touch()
+        mock_path.return_value = fake_fasta
+        mock_read_fa.return_value = ("K03455-B", "AAA", "userheader", "TTT")
+
+        reporter.generate_report(self.final_table, self.sequences_with_locations)
+
+        mock_render.assert_called()
+        self.assertEqual(mock_render.call_args.kwargs["group"], "No subtyping performed.")
+        self.assertEqual(mock_render.call_args.kwargs["subtype"], "No subtyping performed.")
 
     # ---- Missing FASTA and read error ----
     @mock.patch("pyhiv.report.reporter.build_alignment_path")
@@ -181,7 +233,9 @@ class TestPyHIVReporter(TestCase):
             {
                 "Sequence": "seq1",
                 "Reference": "ref1",
+                "Group": "M",
                 "Subtype": "B",
+                "Closest Subtypes": "M:B (score=100)",
                 "Most Matching Gene Region": "gag",
                 "Present Gene Regions": "gag, pol",
             }

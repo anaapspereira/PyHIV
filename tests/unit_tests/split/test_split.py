@@ -1,6 +1,16 @@
 from unittest import TestCase, mock
 
-from pyhiv.split.split import get_gene_region, get_present_gene_regions, map_ref_coords_to_alignment
+from pathlib import Path
+
+from pyhiv.split.split import (
+    feature_output_location,
+    get_gene_region,
+    get_present_gene_regions,
+    map_ref_coords_to_alignment,
+    safe_output_label,
+    sequence_output_label,
+    slugify_feature_name,
+)
 
 
 class TestSplitting(TestCase):
@@ -77,3 +87,60 @@ class TestMapRefCoordsToAlignment(TestCase):
         """Should handle empty input string gracefully."""
         result = map_ref_coords_to_alignment("")
         self.assertEqual(result, {})
+
+
+class TestFeatureOutputLocation(TestCase):
+
+    def test_hxb2_output_keeps_original_feature_name(self):
+        result = feature_output_location("v3", hierarchical=False)
+        self.assertEqual(result, (Path("v3"), "v3"))
+
+        result = feature_output_location("p15 (rnase h)", hierarchical=False)
+        self.assertEqual(result, (Path("p15 (rnase h)"), "p15 (rnase h)"))
+
+    def test_subtyping_output_uses_hierarchy_for_env_subregions(self):
+        result = feature_output_location("v3", hierarchical=True)
+        self.assertEqual(result, (Path("env") / "v3", "v3"))
+
+        result = feature_output_location("gp120", hierarchical=True)
+        self.assertEqual(result, (Path("env") / "gp120", "gp120"))
+
+    def test_subtyping_output_uses_hierarchy_for_pol_subregions(self):
+        result = feature_output_location("p15 (rnase h)", hierarchical=True)
+        self.assertEqual(result, (Path("pol") / "p15-rnase-h", "p15-rnase-h"))
+
+        result = feature_output_location("pol cds", hierarchical=True)
+        self.assertEqual(result, (Path("pol"), "pol"))
+
+    def test_unknown_feature_is_slugified_for_subtyping_output(self):
+        result = feature_output_location("custom Region (A)", hierarchical=True)
+        self.assertEqual(result, (Path("custom-region-a"), "custom-region-a"))
+
+    def test_slugify_feature_name_returns_filesystem_friendly_label(self):
+        self.assertEqual(slugify_feature_name("5' LTR U3"), "5-ltr-u3")
+
+
+class TestSequenceOutputLabel(TestCase):
+
+    def test_safe_output_label_sanitizes_unsafe_characters(self):
+        self.assertEqual(safe_output_label("sample/seq 1:2"), "sample_seq_1_2")
+
+    def test_safe_output_label_falls_back_to_unknown_for_empty_input(self):
+        self.assertEqual(safe_output_label(""), "unknown")
+        self.assertEqual(safe_output_label(None), "unknown")
+        self.assertEqual(safe_output_label("///"), "unknown")
+
+    def test_sequence_output_label_without_file_name(self):
+        self.assertEqual(sequence_output_label(None, "seq1"), "seq1")
+        self.assertEqual(sequence_output_label("-", "seq1"), "seq1")
+
+    def test_sequence_output_label_combines_file_stem_and_sequence(self):
+        self.assertEqual(sequence_output_label("sample.fasta", "seq1"), "sample_seq1")
+
+    def test_sequence_output_label_falls_back_when_file_stem_is_empty(self):
+        """A file name with no usable stem should not prefix the label at all."""
+        self.assertEqual(sequence_output_label("/", "seq1"), "seq1")
+
+    def test_sequence_output_label_uses_unknown_when_stem_sanitizes_to_nothing(self):
+        """A non-empty stem made only of unsafe characters still gets a labeled prefix."""
+        self.assertEqual(sequence_output_label("---.fasta", "seq1"), "unknown_seq1")

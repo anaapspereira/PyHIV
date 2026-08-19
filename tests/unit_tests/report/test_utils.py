@@ -67,6 +67,7 @@ class TestReportingUtils(TestCase):
     def test_parse_features_none_and_nan(self):
         self.assertEqual(parse_features(None), {})
         self.assertEqual(parse_features(float("nan")), {})
+        self.assertEqual(parse_features("None"), {})
 
     def test_read_alignment_fasta_file_not_found(self):
         missing = self.tmp_dir / "missing.fasta"
@@ -197,6 +198,27 @@ class TestReportingUtils(TestCase):
         best.touch()
         result = build_alignment_path("SEQY", self.tmp_dir)
         self.assertEqual(result, best)
+
+    def test_build_alignment_path_with_source_file_name(self):
+        best = self.tmp_dir / "best_alignment_sample_SEQY.fasta"
+        best.touch()
+
+        result = build_alignment_path("SEQY", self.tmp_dir, file_name="sample.fasta")
+
+        self.assertEqual(result, best)
+
+    def test_build_alignment_path_with_source_file_name_for_splitting(self):
+        splitting = self.tmp_dir / "splitting_alignment_sample_SEQY.fasta"
+        splitting.touch()
+
+        result = build_alignment_path(
+            "SEQY",
+            self.tmp_dir,
+            prefix="splitting_alignment",
+            file_name="sample.fasta",
+        )
+
+        self.assertEqual(result, splitting)
 
     def test_read_alignment_fasta_no_reference_in_headers_defaults_first(self):
         """Covers branch where neither header contains 'reference' -> idx_ref=0."""

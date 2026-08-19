@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
-from concurrent.futures import ProcessPoolExecutor, as_completed
+import os
+from concurrent.futures import Executor, ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional, Tuple, List
 
-from pyhiv.align.famsa import pyfamsa_align
+from pyhiv.align.tools import DEFAULT_ALIGNMENT_TOOL, align_sequences
 from pyhiv.loading import REFERENCE_GENOMES_FASTAS_DIR
 
 try:
@@ -14,7 +15,29 @@ try:
 except ImportError: # pragma: no cover
     raise ImportError("BioPython is required for this module. Please install it via 'pip install biopython'.")
 
-def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple[int, str, str, str]]:
+
+DNA_BASES = set("ACGT")
+DEFAULT_KMER_SIZE = 15
+DEFAULT_REFERENCE_TOP_K = 30
+
+
+def resolve_worker_count(n_jobs: Optional[int]) -> int:
+    """
+    Resolve the number of parallel worker processes to use for alignment.
+
+    Falls back to all available CPU cores when n_jobs is not given (None or
+    0), matching the documented default behaviour.
+    """
+    if n_jobs:
+        return n_jobs
+    return os.cpu_count() or 1
+
+
+def process_alignment(
+    test_seq: SeqRecord,
+    ref_seq: SeqRecord,
+    alignment_tool: str = DEFAULT_ALIGNMENT_TOOL,
+) -> Optional[Tuple[int, str, str, str]]:
     """
     Aligns test sequence with a reference sequence and calculates the score.
 
@@ -31,7 +54,7 @@ def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple
         A tuple containing the alignment score, the aligned test sequence, the aligned reference sequence, and the reference sequence name.
     """
     try:
-        test_aligned, ref_aligned = pyfamsa_align(test_seq, ref_seq)
+        test_aligned, ref_aligned = align_sequences(test_seq, ref_seq, alignment_tool)
         score = calculate_alignment_score(test_aligned, ref_aligned)
         return score, test_aligned, ref_aligned, ref_seq.name
     except Exception as e:
@@ -40,7 +63,15 @@ def process_alignment(test_seq: SeqRecord, ref_seq: SeqRecord) -> Optional[Tuple
 
 def align_with_references(test_sequence: SeqRecord,
                           references_dir: Optional[Path] = None,
-                          n_jobs: Optional[int] = None) -> Optional[Tuple[str, str, str]]:
+                          n_jobs: Optional[int] = None,
+                          alignment_tool: str = DEFAULT_ALIGNMENT_TOOL,
+                          kmer_size: int = DEFAULT_KMER_SIZE,
+                          reference_top_k: int = DEFAULT_REFERENCE_TOP_K,
+                          allowed_reference_accessions: Optional[set[str]] = None,
+                          include_alignment_scores: bool = False,
+                          executor: Optional[Executor] = None) -> Optional[
+                              Tuple[str, str, str] | Tuple[str, str, str, list[tuple[int, str]]]
+                          ]:
     """
     Aligns a test sequence with reference sequences in parallel and returns the best match.
 
@@ -53,22 +84,47 @@ def align_with_references(test_sequence: SeqRecord,
         reference genomes for HIV-1 subtyping.
     n_jobs: int, optional
         Number of worker processes to use for parallel processing. Defaults to using all available CPU cores.
+        Ignored when executor is provided.
+    alignment_tool: str, optional
+        Alignment tool to use. Defaults to edlib-HW.
+    kmer_size: int, optional
+        K-mer size used to prefilter candidate references before alignment.
+    reference_top_k: int, optional
+        Number of top k-mer ranked references to align. Use 0 or a negative value
+        to align all references.
+    allowed_reference_accessions: set[str], optional
+        Reference accessions allowed for alignment. If omitted, all FASTA
+        references in references_dir are eligible.
+    include_alignment_scores: bool, optional
+        If True, append a ranked list of (score, reference_name) tuples to the
+        returned best alignment.
+    executor: Executor, optional
+        A pre-existing executor to submit alignment tasks to. When provided,
+        it is reused as-is and its lifecycle stays owned by the caller,
+        instead of this call creating and tearing down its own process pool.
+        Pass a single shared executor when aligning many sequences in a
+        batch so worker processes are started once and reused across all of
+        them, rather than per call.
 
     Returns
     -------
     Tuple[str, str, str]
         A tuple containing the test sequence, reference sequence, and the reference file name with the best alignment.
     """
-    num_workers = n_jobs or 1
     references_dir = references_dir or REFERENCE_GENOMES_FASTAS_DIR
 
     if not isinstance(references_dir, Path) or not references_dir.exists():
         logging.error("Invalid reference directory provided.")
         return None
 
-    # Load reference sequences efficiently
+    # Load reference sequences efficiently.
     ref_sequences: List[SeqRecord] = []
-    for ref_file in references_dir.glob("*.fasta"):  # Only process FASTA files
+    for ref_file in sorted(references_dir.glob("*.fasta")):  # Only process FASTA files
+        if allowed_reference_accessions is not None:
+            accession = reference_accession_from_name(ref_file.stem)
+            if accession not in allowed_reference_accessions:
+                continue
+
         try:
             with open(ref_file, "r") as handle:
                 ref_sequences.extend(list(SeqIO.parse(handle, "fasta")))
@@ -79,19 +135,118 @@ def align_with_references(test_sequence: SeqRecord,
         logging.error("No valid reference sequences found.")
         return None
 
-    best_alignment = None
-    best_score = float('-inf')
+    candidate_refs = kmer_shortlist(
+        test_sequence,
+        ref_sequences,
+        size=kmer_size,
+        top_k=reference_top_k,
+    )
 
-    with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        futures = {executor.submit(process_alignment, test_sequence, ref): ref for ref in ref_sequences}
+    if not candidate_refs:
+        logging.error("No reference sequences selected by k-mer prefilter.")
+        return None
 
-        for future in as_completed(futures):
-            result = future.result()
-            if result and result[0] > best_score:
-                best_score = result[0]
-                best_alignment = result[1:]
+    if executor is not None:
+        results = _submit_alignment_tasks(executor, test_sequence, candidate_refs, alignment_tool)
+    else:
+        num_workers = resolve_worker_count(n_jobs)
+        with ProcessPoolExecutor(max_workers=num_workers) as owned_executor:
+            results = _submit_alignment_tasks(owned_executor, test_sequence, candidate_refs, alignment_tool)
+
+    if not results:
+        return None
+
+    results.sort(key=lambda item: (-item[0], item[3]))
+    best_score, best_test_aligned, best_ref_aligned, best_reference_name = results[0]
+    best_alignment = (best_test_aligned, best_ref_aligned, best_reference_name)
+
+    if include_alignment_scores:
+        alignment_scores = [(score, reference_name) for score, _, _, reference_name in results]
+        return (*best_alignment, alignment_scores)
 
     return best_alignment
+
+
+def _submit_alignment_tasks(
+    executor: Executor,
+    test_sequence: SeqRecord,
+    candidate_refs: List[SeqRecord],
+    alignment_tool: str,
+) -> list[tuple[int, str, str, str]]:
+    futures = {
+        executor.submit(process_alignment, test_sequence, ref, alignment_tool): ref
+        for ref in candidate_refs
+    }
+
+    results: list[tuple[int, str, str, str]] = []
+    for future in as_completed(futures):
+        result = future.result()
+        if result:
+            results.append(result)
+    return results
+
+
+def reference_accession_from_name(reference_name: str) -> str:
+    return Path(reference_name).stem.split("-", maxsplit=1)[0]
+
+
+def kmers(sequence: str, size: int) -> set[str]:
+    if size <= 0:
+        raise ValueError("k-mer size must be positive.")
+
+    sequence = sequence.upper()
+    if len(sequence) < size:
+        return set()
+
+    found: set[str] = set()
+    for index in range(0, len(sequence) - size + 1):
+        kmer = sequence[index:index + size]
+        if set(kmer) <= DNA_BASES:
+            found.add(kmer)
+
+    return found
+
+
+def kmer_shortlist(
+    test_sequence: SeqRecord,
+    references: List[SeqRecord],
+    size: int = DEFAULT_KMER_SIZE,
+    top_k: int = DEFAULT_REFERENCE_TOP_K,
+    reference_kmers: Optional[List[set[str]]] = None,
+) -> List[SeqRecord]:
+    if top_k <= 0 or top_k >= len(references):
+        return references
+
+    if reference_kmers is None:
+        reference_kmers = build_reference_kmer_index(references, size)
+
+    if len(reference_kmers) != len(references):
+        raise ValueError("reference_kmers must have the same length as references.")
+
+    query_kmers = kmers(str(test_sequence.seq), size)
+    if not query_kmers:
+        return references[:top_k]
+
+    ranked: list[tuple[float, int, int, SeqRecord]] = []
+    query_count = len(query_kmers)
+    for index, (reference, ref_kmers) in enumerate(zip(references, reference_kmers)):
+        if not ref_kmers:
+            containment = 0.0
+            shared = 0
+        else:
+            shared = len(query_kmers & ref_kmers)
+            containment = shared / query_count
+        ranked.append((containment, shared, index, reference))
+
+    ranked.sort(key=lambda item: (-item[0], -item[1], item[2]))
+    return [item[-1] for item in ranked[:top_k]]
+
+
+def build_reference_kmer_index(
+    references: List[SeqRecord],
+    size: int = DEFAULT_KMER_SIZE,
+) -> List[set[str]]:
+    return [kmers(str(reference.seq), size) for reference in references]
 
 
 def calculate_alignment_score(seq1: str, seq2: str) -> int:
@@ -110,9 +265,12 @@ def calculate_alignment_score(seq1: str, seq2: str) -> int:
     int
         Number of positions where the sequences are equal.
     """
-    try:
-        return sum(1 for seq1_nt, seq2_nt in zip(seq1, seq2)
-               if seq1_nt.upper() == seq2_nt.upper() and seq1_nt != "-")
-    except ValueError:
-        logging.error("Sequences have different lengths, alignment might be incorrect.")
+    if len(seq1) != len(seq2):
+        logging.error(
+            "Sequences have different lengths (%d vs %d); alignment might be incorrect.",
+            len(seq1), len(seq2),
+        )
         return 0
+
+    return sum(1 for seq1_nt, seq2_nt in zip(seq1, seq2)
+           if seq1_nt.upper() == seq2_nt.upper() and seq1_nt != "-")

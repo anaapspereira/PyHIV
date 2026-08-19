@@ -18,13 +18,18 @@ def render_sequence_page(
     pdf: PdfPages,
     sequence: str,
     accession: str,
+    group: str,
     subtype: str,
+    closest_subtypes: str,
     mm_region: str,
     present_regions: List[str],
     features_aln: Dict[str, Tuple[int, int]],
     ref_seq_aligned: str,
     user_seq_aligned: str,
-    y_positions: Optional[Dict[str, float]] = None
+    y_positions: Optional[Dict[str, float]] = None,
+    splitting_accession: Optional[str] = None,
+    file_name: str = "-",
+    subtype_score_warning: str = "",
 ):
     """
     Render a single sequence page in the PDF report.
@@ -35,10 +40,22 @@ def render_sequence_page(
         The PdfPages object to save the figure into.
     sequence : str
         The name or identifier of the sequence.
+    file_name : str
+        The source FASTA file name for the sequence.
     accession : str
         The accession number of the sequence.
+    group : str
+        The HIV-1 reference group.
     subtype : str
         The subtype of the sequence.
+    closest_subtypes : str
+        Ranked summary of the closest HIV-1 subtypes.
+    subtype_score_warning : str
+        Warning shown when the top subtype scores have a low relative margin.
+    splitting_accession : Optional[str]
+        The reference accession used for gene splitting, shown in the
+        metadata block when it differs from the subtyping reference. None
+        hides the "Splitting Reference" line.
     mm_region : str
         The most matching region of the sequence.
     present_regions : List[str]
@@ -70,13 +87,23 @@ def render_sequence_page(
     usr_len_nt = len(ungap(user_seq_aligned))
 
     meta_lines = [
+        f"File name: {file_name or '-'}",
         f"Sequence: {sequence}",
+        f"Group: {group}",
         f"Subtype: {subtype}",
+        f"Closest subtypes: {closest_subtypes or '-'}",
         f"Reference Accession: {accession}",
+    ]
+    if subtype_score_warning:
+        meta_lines.append(f"Subtype score warning: {subtype_score_warning}")
+    if splitting_accession:
+        meta_lines.append(f"Splitting Reference: {splitting_accession}")
+
+    meta_lines.extend([
         f"Most matching region: {mm_region or '-'}",
         f"Present regions ({len(present_regions)}): {', '.join(present_regions) if present_regions else '-'}",
         f"Lengths — nt (no gaps) Ref|Seq: {ref_len_nt} | {usr_len_nt}",
-    ]
+    ])
     wrapped = "\n".join(textwrap.fill(l, width=MetadataConfig.WRAP, subsequent_indent='   ') for l in meta_lines)
 
     ax_meta.text(0.0, MetadataConfig.INFO_TOP_Y, wrapped, ha="left", va="top",

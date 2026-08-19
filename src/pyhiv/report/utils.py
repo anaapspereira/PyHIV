@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple, Any
 import pandas as pd
 
 from pyhiv.report.constants import NumericOffsets, K03455Config
+from pyhiv.split import safe_output_label, sequence_output_label
 
 
 def ungap(seq: str) -> str:
@@ -150,7 +151,12 @@ def parse_features(cell: Any) -> Dict[str, Tuple[int, int]]:
         return {}
     if isinstance(cell, dict):
         return {str(k): (int(v[0]), int(v[1])) for k, v in cell.items()}
-    d = ast.literal_eval(str(cell))
+    text = str(cell).strip()
+    if not text or text.lower() in {"none", "nan", "null"}:
+        return {}
+    d = ast.literal_eval(text)
+    if d is None:
+        return {}
     return {str(k): (int(v[0]), int(v[1])) for k, v in d.items()}
 
 
@@ -343,7 +349,12 @@ def get_numeric_offsets_non_special(gene: str) -> tuple[float, float]:
     return NumericOffsets.get_offsets(gene)
 
 
-def build_alignment_path(sequence: str, alignments_dir: Path) -> Path:
+def build_alignment_path(
+    sequence: str,
+    alignments_dir: Path,
+    prefix: str = "best_alignment",
+    file_name: str | None = None,
+) -> Path:
     """
     Build path to alignment FASTA file.
 
@@ -359,5 +370,30 @@ def build_alignment_path(sequence: str, alignments_dir: Path) -> Path:
     Path
         The path to the alignment FASTA file.
     """
-    p = alignments_dir / f"best_alignment_{sequence}.fasta"
-    return p if p.exists() else (alignments_dir / f"{sequence}.fasta")
+    candidates = []
+    output_label = sequence_output_label(file_name, sequence)
+    if file_name and file_name != "-":
+        candidates.append(alignments_dir / f"{prefix}_{output_label}.fasta")
+
+    candidates.append(alignments_dir / f"{prefix}_{sequence}.fasta")
+    safe_sequence = safe_output_label(sequence)
+    if safe_sequence != sequence:
+        candidates.append(alignments_dir / f"{prefix}_{safe_sequence}.fasta")
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
+    if prefix != "best_alignment":
+        best_candidates = []
+        if file_name and file_name != "-":
+            best_candidates.append(alignments_dir / f"best_alignment_{output_label}.fasta")
+        best_candidates.append(alignments_dir / f"best_alignment_{sequence}.fasta")
+        if safe_sequence != sequence:
+            best_candidates.append(alignments_dir / f"best_alignment_{safe_sequence}.fasta")
+
+        for candidate in best_candidates:
+            if candidate.exists():
+                return candidate
+
+    return alignments_dir / f"{sequence}.fasta"

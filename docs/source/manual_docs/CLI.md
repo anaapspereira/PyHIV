@@ -70,8 +70,8 @@ Checks:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--subtyping` / `--no-subtyping` | `--subtyping` | Enable/disable HIV-1 subtyping |
-| `--splitting` / `--no-splitting` | `--splitting` | Enable/disable gene region splitting |
+| `--subtyping BOOL` | `true` | Enable/disable HIV-1 subtyping |
+| `--splitting TEXT` | `true` | Splitting mode: `true`/`subtype`, `hxb2`/`reference`, or `false`/`none`. With `--subtyping true`, `true` uses the subtype reference when it has features and falls back to HXB2 when features are missing. If `--subtyping false`, active splitting uses HXB2 |
 
 ### Output Options
 
@@ -84,6 +84,18 @@ Checks:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `-j`, `--n-jobs INTEGER` | All CPUs | Number of parallel jobs |
+| `--alignment-tool [edlib-HW|MAFFT|parasail-NW|PyFamsa|parasail]` | `edlib-HW` | Alignment backend |
+| `--kmer-size INTEGER` | `15` | K-mer size used to prefilter candidate references |
+| `--reference-top-k INTEGER` | `30` | Number of top k-mer ranked references to align; use `0` to align all references |
+| `--reference-groups TEXT` | `M` | Comma-separated HIV-1 reference groups used for subtyping; use `M,N,O,P` to include groups N, O, and P |
+
+`edlib-HW` is the default alignment backend. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` are available through `--alignment-tool`. `parasail-NW` requires the optional `parasail` extra — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon).
+
+Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `--reference-top-k 0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; use `--reference-groups M,N,O,P` to include groups N, O, and P.
+
+MAFFT can be configured with `PYHIV_MAFFT_BIN` or discovered as `mafft` on `PATH`.
+
+Sequences longer than 12000 nucleotides are skipped with this warning: `The submitted sequence is longer than the HIV-1 genome.`
 
 ### Display Options
 
@@ -117,12 +129,17 @@ pyhiv run sequences/ -j 8
 
 **Alignment only (no subtyping or splitting):**
 ```bash
-pyhiv run sequences/ --no-subtyping --no-splitting
+pyhiv run sequences/ --subtyping false --splitting false
 ```
 
 **Subtyping without gene splitting:**
 ```bash
-pyhiv run sequences/ --no-splitting
+pyhiv run sequences/ --splitting false
+```
+
+**Subtyping with HXB2-based splitting:**
+```bash
+pyhiv run sequences/ --splitting hxb2
 ```
 
 **Verbose output with timing:**
@@ -164,7 +181,7 @@ pyhiv validate data/raw_sequences/
 pyhiv run data/raw_sequences/ -o results/run1/ -v
 
 # 3. Process subset without splitting
-pyhiv run data/subset/ -o results/run2/ --no-splitting -j 4
+pyhiv run data/subset/ -o results/run2/ --splitting false -j 4
 ```
 
 **Integration with shell scripts:**
@@ -219,14 +236,14 @@ PyHIV recursively searches for FASTA files in all subdirectories.
 ```
 PyHIV_results/
 ├── final_table.tsv                    # Summary table
-├── best_alignment_sample1.fasta       # Best alignments
-├── best_alignment_sample2.fasta
+├── best_alignment_inputA_sample1.fasta # Best alignments
+├── best_alignment_inputB_sample2.fasta
 ├── gag/                               # Gene regions (if --splitting)
-│   ├── sample1_gag.fasta
-│   └── sample2_gag.fasta
+│   ├── inputA_sample1_gag.fasta
+│   └── inputB_sample2_gag.fasta
 ├── pol/
-│   ├── sample1_pol.fasta
-│   └── sample2_pol.fasta
+│   ├── inputA_sample1_pol.fasta
+│   └── inputB_sample2_pol.fasta
 ├── env/
 └── ...
 ```
@@ -239,22 +256,27 @@ Summary table with columns:
 
 | Column | Description |
 |--------|-------------|
+| File Name | Source FASTA file name |
 | Sequence | Input sequence ID |
 | Reference | Best matching reference accession |
+| Group | HIV-1 reference group |
 | Subtype | HIV-1 subtype (if `--subtyping` enabled) |
+| Closest Subtypes | Top 3 closest unique group/subtype calls by alignment score |
+| Splitting Reference | Reference accession used for gene splitting |
 | Most Matching Gene Region | Gene with most matches |
 | Present Gene Regions | All detected gene regions |
 
 **Example:**
 ```
-Sequence    Reference    Subtype    Most Matching Gene Region    Present Gene Regions
-seq001      K03455       B          pol                          gag, pol, env
-seq002      AF004885     C          env                          pol, env
+File Name        Sequence    Reference    Group    Subtype    Closest Subtypes                                  Splitting Reference    Most Matching Gene Region    Present Gene Regions
+sample_1.fasta   seq001      K03455       M        B          M:B (score=9120); M:C (score=8894); M:A1 (...)   K03455                 pol                          gag, pol, env
+sample_2.fasta   seq002      AF004885     M        C          M:C (score=9015); M:B (score=8801); M:A1 (...)   AF004885               env                          pol, env
 ```
 
 #### Alignment Files
 
-- `best_alignment_<sequence_id>.fasta`: Contains reference and query alignment
+- `best_alignment_<file_stem>_<sequence_id>.fasta`: Contains reference and query alignment
+- `splitting_alignment_<file_stem>_<sequence_id>.fasta`: Contains the HXB2 alignment when `--splitting hxb2` is used with subtyping, or when `--splitting true` falls back to HXB2 because the selected subtype reference has no annotated features
 - Format: Multi-FASTA with reference sequence and aligned query
 
 #### Gene Region Files
@@ -302,7 +324,7 @@ python -c "import pandas as pd; df = pd.read_csv('results/final_table.tsv', sep=
 **Filter by subtype:**
 ```bash
 pyhiv run sequences/ -o results/ -v
-awk -F'\t' '$3 == "B"' results/final_table.tsv > subtype_B.tsv
+awk -F'\t' '$5 == "B"' results/final_table.tsv > subtype_B.tsv
 ```
 
 ## 🛠️ Troubleshooting
@@ -379,7 +401,7 @@ pyhiv validate --help
 
 1. **Use validation first** - `pyhiv validate` is fast and catches input errors
 2. **Adjust parallelism** - Start with default (all CPUs), reduce if memory is limited
-3. **Disable unused features** - Use `--no-splitting` if you only need alignments
+3. **Disable unused features** - Use `--splitting false` if you only need alignments
 4. **Batch processing** - For thousands of sequences, split into smaller batches
 5. **SSD storage** - Use SSD for output directory to improve I/O performance
 

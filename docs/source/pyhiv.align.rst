@@ -20,6 +20,14 @@ pyhiv.align.famsa module
    :undoc-members:
    :show-inheritance:
 
+pyhiv.align.tools module
+------------------------
+
+.. automodule:: pyhiv.align.tools
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
