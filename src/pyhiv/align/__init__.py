@@ -22,4 +22,5 @@ from .tools import (
     mafft_align,
     normalize_alignment_tool,
     parasail_nw_align,
+    validate_alignment_tool_available,
 )
