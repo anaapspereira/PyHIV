@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from concurrent.futures import ProcessPoolExecutor, as_completed
+import os
+from concurrent.futures import Executor, ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional, Tuple, List
 
@@ -18,6 +19,18 @@ except ImportError: # pragma: no cover
 DNA_BASES = set("ACGT")
 DEFAULT_KMER_SIZE = 15
 DEFAULT_REFERENCE_TOP_K = 30
+
+
+def resolve_worker_count(n_jobs: Optional[int]) -> int:
+    """
+    Resolve the number of parallel worker processes to use for alignment.
+
+    Falls back to all available CPU cores when n_jobs is not given (None or
+    0), matching the documented default behaviour.
+    """
+    if n_jobs:
+        return n_jobs
+    return os.cpu_count() or 1
 
 
 def process_alignment(
@@ -55,7 +68,8 @@ def align_with_references(test_sequence: SeqRecord,
                           kmer_size: int = DEFAULT_KMER_SIZE,
                           reference_top_k: int = DEFAULT_REFERENCE_TOP_K,
                           allowed_reference_accessions: Optional[set[str]] = None,
-                          include_alignment_scores: bool = False) -> Optional[
+                          include_alignment_scores: bool = False,
+                          executor: Optional[Executor] = None) -> Optional[
                               Tuple[str, str, str] | Tuple[str, str, str, list[tuple[int, str]]]
                           ]:
     """
@@ -70,6 +84,7 @@ def align_with_references(test_sequence: SeqRecord,
         reference genomes for HIV-1 subtyping.
     n_jobs: int, optional
         Number of worker processes to use for parallel processing. Defaults to using all available CPU cores.
+        Ignored when executor is provided.
     alignment_tool: str, optional
         Alignment tool to use. Defaults to edlib-HW.
     kmer_size: int, optional
@@ -83,13 +98,19 @@ def align_with_references(test_sequence: SeqRecord,
     include_alignment_scores: bool, optional
         If True, append a ranked list of (score, reference_name) tuples to the
         returned best alignment.
+    executor: Executor, optional
+        A pre-existing executor to submit alignment tasks to. When provided,
+        it is reused as-is and its lifecycle stays owned by the caller,
+        instead of this call creating and tearing down its own process pool.
+        Pass a single shared executor when aligning many sequences in a
+        batch so worker processes are started once and reused across all of
+        them, rather than per call.
 
     Returns
     -------
     Tuple[str, str, str]
         A tuple containing the test sequence, reference sequence, and the reference file name with the best alignment.
     """
-    num_workers = n_jobs or 1
     references_dir = references_dir or REFERENCE_GENOMES_FASTAS_DIR
 
     if not isinstance(references_dir, Path) or not references_dir.exists():
@@ -125,18 +146,12 @@ def align_with_references(test_sequence: SeqRecord,
         logging.error("No reference sequences selected by k-mer prefilter.")
         return None
 
-    results: list[tuple[int, str, str, str]] = []
-
-    with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        futures = {
-            executor.submit(process_alignment, test_sequence, ref, alignment_tool): ref
-            for ref in candidate_refs
-        }
-
-        for future in as_completed(futures):
-            result = future.result()
-            if result:
-                results.append(result)
+    if executor is not None:
+        results = _submit_alignment_tasks(executor, test_sequence, candidate_refs, alignment_tool)
+    else:
+        num_workers = resolve_worker_count(n_jobs)
+        with ProcessPoolExecutor(max_workers=num_workers) as owned_executor:
+            results = _submit_alignment_tasks(owned_executor, test_sequence, candidate_refs, alignment_tool)
 
     if not results:
         return None
@@ -150,6 +165,25 @@ def align_with_references(test_sequence: SeqRecord,
         return (*best_alignment, alignment_scores)
 
     return best_alignment
+
+
+def _submit_alignment_tasks(
+    executor: Executor,
+    test_sequence: SeqRecord,
+    candidate_refs: List[SeqRecord],
+    alignment_tool: str,
+) -> list[tuple[int, str, str, str]]:
+    futures = {
+        executor.submit(process_alignment, test_sequence, ref, alignment_tool): ref
+        for ref in candidate_refs
+    }
+
+    results: list[tuple[int, str, str, str]] = []
+    for future in as_completed(futures):
+        result = future.result()
+        if result:
+            results.append(result)
+    return results
 
 
 def reference_accession_from_name(reference_name: str) -> str:
@@ -231,9 +265,12 @@ def calculate_alignment_score(seq1: str, seq2: str) -> int:
     int
         Number of positions where the sequences are equal.
     """
-    try:
-        return sum(1 for seq1_nt, seq2_nt in zip(seq1, seq2)
-               if seq1_nt.upper() == seq2_nt.upper() and seq1_nt != "-")
-    except ValueError:
-        logging.error("Sequences have different lengths, alignment might be incorrect.")
+    if len(seq1) != len(seq2):
+        logging.error(
+            "Sequences have different lengths (%d vs %d); alignment might be incorrect.",
+            len(seq1), len(seq2),
+        )
         return 0
+
+    return sum(1 for seq1_nt, seq2_nt in zip(seq1, seq2)
+           if seq1_nt.upper() == seq2_nt.upper() and seq1_nt != "-")

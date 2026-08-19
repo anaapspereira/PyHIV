@@ -52,6 +52,10 @@ def render_sequence_page(
         Ranked summary of the closest HIV-1 subtypes.
     subtype_score_warning : str
         Warning shown when the top subtype scores have a low relative margin.
+    splitting_accession : Optional[str]
+        The reference accession used for gene splitting, shown in the
+        metadata block when it differs from the subtyping reference. None
+        hides the "Splitting Reference" line.
     mm_region : str
         The most matching region of the sequence.
     present_regions : List[str]

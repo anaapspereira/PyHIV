@@ -6,7 +6,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
-from pyhiv.loading import read_input_fastas
+from pyhiv.loading import discover_fasta_files, read_input_fastas
 from tests import TEST_DIR
 
 
@@ -108,3 +108,54 @@ class TestReadFastas(TestCase):
         # Check that the warning for no supported FASTA files was triggered
         mock_warning.assert_called_once()
         self.assertIn("No FASTA files with supported extensions found", mock_warning.call_args[0][0])
+
+    def test_discover_fasta_files_finds_nested_files(self):
+        """Should recursively find FASTA files inside subdirectories."""
+        nested_dir = self.input_path / "subdir"
+        nested_dir.mkdir()
+        nested_file = nested_dir / "nested.fasta"
+        nested_file.write_text(">seq1\nACGT\n")
+
+        result = discover_fasta_files(self.input_path)
+        self.assertEqual(result, [nested_file])
+
+    def test_discover_fasta_files_excludes_given_directories(self):
+        """Should skip files under any directory listed in exclude_dirs."""
+        kept_dir = self.input_path / "keep"
+        kept_dir.mkdir()
+        kept_file = kept_dir / "sample.fasta"
+        kept_file.write_text(">seq1\nACGT\n")
+
+        excluded_dir = self.input_path / "PyHIV_results"
+        excluded_dir.mkdir()
+        excluded_file = excluded_dir / "best_alignment_sample_seq1.fasta"
+        excluded_file.write_text(">Reference X\nACGT\n>seq1\nACGT\n")
+
+        result = discover_fasta_files(self.input_path, exclude_dirs=[excluded_dir])
+        self.assertEqual(result, [kept_file])
+
+    def test_read_input_fastas_uses_relative_path_as_source_file(self):
+        """source_file should be the path relative to the input folder, not just the basename."""
+        nested_dir = self.input_path / "batch1"
+        nested_dir.mkdir()
+        SeqIO.write([SeqRecord(Seq("ACGT"), id="seq1")], nested_dir / "sample.fasta", "fasta")
+
+        result = read_input_fastas(self.input_path)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].annotations["source_file"], "batch1/sample.fasta")
+
+    def test_read_input_fastas_excludes_output_dir(self):
+        """read_input_fastas should not re-read files under an excluded output directory."""
+        self._write_fasta("sample.fasta", [SeqRecord(Seq("ACGT"), id="seq1")])
+
+        output_dir = self.input_path / "PyHIV_results"
+        output_dir.mkdir()
+        SeqIO.write(
+            [SeqRecord(Seq("ACGT"), id="old_seq")],
+            output_dir / "best_alignment_old_seq.fasta",
+            "fasta",
+        )
+
+        result = read_input_fastas(self.input_path, exclude_dirs=[output_dir])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].id, "seq1")

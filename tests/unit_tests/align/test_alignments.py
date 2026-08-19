@@ -15,11 +15,10 @@ class TestCalculateAlignmentScore(TestCase):
         result = alignment.calculate_alignment_score(seq1, seq2)
         self.assertEqual(result, 3)
 
-    def test_handles_value_error(self):
-        """Should log error and return 0 when zip() breaks (e.g. invalid input type)."""
+    def test_handles_mismatched_lengths(self):
+        """Should log error and return 0 when the two sequences have different lengths."""
         with mock.patch("logging.error") as mock_log:
-            with mock.patch("builtins.zip", side_effect=ValueError("bad zip")):
-                result = alignment.calculate_alignment_score("AAA", "AAA")
+            result = alignment.calculate_alignment_score("AAAA", "AAA")
             mock_log.assert_called_once()
             self.assertEqual(result, 0)
 
