@@ -277,6 +277,57 @@ class TestPyHIV(TestCase):
     @patch("pyhiv.read_input_fastas")
     @patch("pyhiv.validate_reference_paths")
     @patch("pyhiv.get_reference_paths")
+    def test_splitting_disambiguates_features_that_share_an_output_file(
+        self,
+        mock_paths,
+        mock_validate,
+        mock_read_fastas,
+        mock_align,
+    ):
+        """Two annotated features that map to the same output file must not overwrite each other."""
+        sequences_with_locations = self.output_dir / "sequences_with_locations.tsv"
+        pd.DataFrame([
+            {
+                "accession": "ACCNO",
+                "group": "M",
+                "subtype": "B",
+                # "gag-pol" and "gag-pol fusion" both map to the same
+                # ("gag-pol",) output path/suffix in FEATURE_OUTPUT_PATHS.
+                "features": "{'gag-pol': (1, 3), 'gag-pol fusion': (4, 6)}",
+            },
+        ]).to_csv(sequences_with_locations, sep="\t", index=False)
+
+        mock_paths.return_value = {
+            "SEQUENCES_WITH_LOCATION": sequences_with_locations,
+            "REFERENCE_GENOMES_FASTAS_DIR": REFERENCE_BASE / "reference_fastas",
+            "HXB2_GENOME_FASTA_DIR": REFERENCE_BASE / "HXB2_fasta",
+        }
+        query = SeqRecord(Seq("AAA"), id="query")
+        query.annotations["source_file"] = "sample.fasta"
+        mock_read_fastas.return_value = [query]
+        mock_align.return_value = ("ACGTAC", "ACGTAC", "ACCNO-B", [(6, "ACCNO-B")])
+
+        PyHIV(
+            fastas_dir=str(DATA_DIR),
+            subtyping=True,
+            splitting=True,
+            output_dir=str(self.output_dir),
+            reporting=False,
+        )
+
+        gene_dir = self.output_dir / "gag-pol"
+        first_file = gene_dir / "sample_query_gag-pol.fasta"
+        second_file = gene_dir / "sample_query_gag-pol-fusion.fasta"
+
+        self.assertTrue(first_file.exists())
+        self.assertTrue(second_file.exists())
+        self.assertIn("ACG", first_file.read_text())
+        self.assertIn("TAC", second_file.read_text())
+
+    @patch("pyhiv.align_with_references")
+    @patch("pyhiv.read_input_fastas")
+    @patch("pyhiv.validate_reference_paths")
+    @patch("pyhiv.get_reference_paths")
     def test_hxb2_fallback_alignment_failure_records_placeholder_row(
         self,
         mock_paths,

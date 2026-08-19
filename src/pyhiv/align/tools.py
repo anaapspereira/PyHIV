@@ -215,14 +215,18 @@ def edlib_hw_align(test_seq: SeqRecord, ref_seq: SeqRecord) -> Tuple[str, str]:
     # coordinates and has exactly len(ref_sequence) columns.
     query_mid, ref_mid = _drop_query_insertions(query_mid, ref_mid)
 
+    # _drop_query_insertions always keeps query_mid and ref_mid the same
+    # length, and that length always equals the reference window length, so
+    # these checks can never fail in practice. Kept as a guard against a
+    # future change breaking that invariant.
     expected_window_length = end - start + 1
-    if len(query_mid) != expected_window_length:
+    if len(query_mid) != expected_window_length:  # pragma: no cover
         raise AssertionError(
             f"Projected query window length {len(query_mid)} does not match "
             f"reference window length {expected_window_length}."
         )
 
-    if len(ref_mid) != expected_window_length:
+    if len(ref_mid) != expected_window_length:  # pragma: no cover
         raise AssertionError(
             f"Projected reference window length {len(ref_mid)} does not match "
             f"reference window length {expected_window_length}."
@@ -240,13 +244,16 @@ def edlib_hw_align(test_seq: SeqRecord, ref_seq: SeqRecord) -> Tuple[str, str]:
         + ref_sequence[end + 1:]
     )
 
-    if len(query_aligned) != len(ref_sequence):
+    # Given the checks above, query_aligned and ref_aligned are always padded
+    # to exactly len(ref_sequence), so these can never fail in practice. Kept
+    # as a guard against a future change breaking that invariant.
+    if len(query_aligned) != len(ref_sequence):  # pragma: no cover
         raise AssertionError(
             f"Projected query alignment length {len(query_aligned)} does not match "
             f"reference length {len(ref_sequence)}."
         )
 
-    if len(ref_aligned) != len(ref_sequence):
+    if len(ref_aligned) != len(ref_sequence):  # pragma: no cover
         raise AssertionError(
             f"Projected reference alignment length {len(ref_aligned)} does not match "
             f"reference length {len(ref_sequence)}."
