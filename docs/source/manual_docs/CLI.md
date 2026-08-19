@@ -64,6 +64,38 @@ Checks:
 - FASTA files are present
 - Lists found files (up to 10)
 
+### `pyhiv update reference-dataset`
+
+Refresh the packaged HIV-1 reference dataset (`reference_fastas/` and `sequences_with_locations.tsv`) from LANL's latest reference alignment and CRF database, optionally refreshing GenBank feature annotations. Also available as the top-level alias `pyhiv update-reference-dataset`.
+
+```bash
+pyhiv update reference-dataset [OPTIONS]
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--reference-dir PATH` | `REFERENCE_GENOMES_DIR` or packaged directory | Reference dataset root to update |
+| `--email TEXT` | `NCBI_EMAIL` env var | Email sent to NCBI E-utilities (required by `--refresh-features`) |
+| `--ncbi-api-key TEXT` | `NCBI_API_KEY` env var | Optional NCBI API key |
+| `--refresh-features` | off | Refetch GenBank feature locations for references whose features are `None` |
+| `--dry-run` | off | Check for available updates without writing FASTA or TSV files |
+| `-y`, `--yes` | off | Skip the confirmation prompt |
+
+Without `--yes` or `--dry-run`, the command asks for confirmation before overwriting the reference dataset. `--refresh-features` requires an NCBI email, passed via `--email` or the `NCBI_EMAIL` environment variable.
+
+```bash
+# Preview available updates without changing anything
+pyhiv update reference-dataset --dry-run
+
+# Apply the update, skipping the confirmation prompt
+pyhiv update reference-dataset --yes
+
+# Also refresh missing GenBank feature annotations
+pyhiv update reference-dataset --refresh-features --email you@example.com --yes
+```
+
 ## ⚙️ Options
 
 ### Processing Options
@@ -87,15 +119,22 @@ Checks:
 | `--alignment-tool [edlib-HW|MAFFT|parasail-NW|PyFamsa|parasail]` | `edlib-HW` | Alignment backend |
 | `--kmer-size INTEGER` | `15` | K-mer size used to prefilter candidate references |
 | `--reference-top-k INTEGER` | `30` | Number of top k-mer ranked references to align; use `0` to align all references |
-| `--reference-groups TEXT` | `M` | Comma-separated HIV-1 reference groups used for subtyping; use `M,N,O,P` to include groups N, O, and P |
+| `--reference-groups TEXT` | `M` | Comma-separated HIV-1 reference groups used for subtyping; use `M,N,O,P` or `all` to include groups N, O, and P |
 
-`edlib-HW` is the default alignment backend. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` are available through `--alignment-tool`. `parasail-NW` requires the optional `parasail` extra — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon).
+`edlib-HW` is the default alignment backend. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` are available through `--alignment-tool`. `parasail-NW` requires the optional `parasail` extra — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon). PyHIV checks the selected tool is actually usable before processing starts, and exits immediately with an install hint if it isn't (e.g. missing `parasail`, or no `mafft` executable on `PATH`) rather than failing per-reference partway through a run.
 
-Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `--reference-top-k 0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; use `--reference-groups M,N,O,P` to include groups N, O, and P.
+Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `--reference-top-k 0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; use `--reference-groups M,N,O,P` (or `--reference-groups all`) to include groups N, O, and P.
 
 MAFFT can be configured with `PYHIV_MAFFT_BIN` or discovered as `mafft` on `PATH`.
 
 Sequences longer than 12000 nucleotides are skipped with this warning: `The submitted sequence is longer than the HIV-1 genome.`
+
+### Progress & Reporting Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--progress` / `--no-progress` | `--progress` | Show a terminal progress bar while processing input sequences |
+| `--reporting` / `--no-reporting` | `--reporting` | Generate a PDF report (`PyHIV_report_all_sequences.pdf`) with per-sequence visualizations |
 
 ### Display Options
 
@@ -286,6 +325,10 @@ When `--splitting` is enabled:
 - One file per sequence per gene
 - Contains extracted gene region from alignment
 
+#### PDF Report
+
+When `--reporting` is enabled (default), PyHIV writes `PyHIV_report_all_sequences.pdf` to the output directory with one page per processed sequence, summarizing its alignment, subtyping, and gene-splitting results. Disable it with `--no-reporting`.
+
 ## ⚡ Advanced Usage
 
 ### Performance Tuning
@@ -387,6 +430,7 @@ pyhiv --help
 # Show help for specific command
 pyhiv run --help
 pyhiv validate --help
+pyhiv update reference-dataset --help
 ```
 
 ### Exit Codes
