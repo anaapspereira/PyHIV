@@ -16,9 +16,11 @@ from pyhiv import (
     SPLITTING_MODE_HXB2,
     SPLITTING_MODE_NONE,
     SPLITTING_MODE_SUBTYPE,
+    SUPPORTED_REFERENCE_GROUPS,
     has_reference_features,
     normalize_splitting_mode,
     normalize_reference_groups,
+    reference_features,
     reference_has_features,
     selected_reference_accessions,
     summarize_closest_subtypes,
@@ -81,6 +83,7 @@ class TestPyHIV(TestCase):
             output_dir=str(self.output_dir),
             n_jobs=1,
             alignment_tool="PyFamsa",
+            show_progress=True,
         )
 
         table_file = self.output_dir / "final_table.tsv"
@@ -552,6 +555,47 @@ class TestPyHIV(TestCase):
         self.assertFalse(reference_has_features("{}"))
         self.assertTrue(reference_has_features("{'gag': (1, 10)}"))
 
+    def test_reference_has_features_accepts_dict_input(self):
+        self.assertFalse(reference_has_features({}))
+        self.assertTrue(reference_has_features({"gag": (1, 10)}))
+
+    def test_reference_has_features_treats_unparsable_text_as_present(self):
+        self.assertTrue(reference_has_features("not a python literal("))
+
+    def test_reference_has_features_handles_none_literal_result(self):
+        self.assertFalse(reference_has_features("(None)"))
+
+    def test_reference_has_features_treats_non_dict_literal_as_present(self):
+        self.assertTrue(reference_has_features("['gag', 'pol']"))
+
+    def test_reference_features_raises_for_unknown_accession(self):
+        reference_sequences = pd.DataFrame([
+            {"accession": "acc1", "features": "{'gag': (1, 10)}"},
+        ])
+        with self.assertRaises(ValueError):
+            reference_features(reference_sequences, "missing_accession")
+
+    def test_has_reference_features_returns_false_without_features_column(self):
+        reference_sequences = pd.DataFrame([{"accession": "acc1"}])
+        self.assertFalse(has_reference_features(reference_sequences, "acc1"))
+
+    def test_normalize_reference_groups_rejects_empty_group_list(self):
+        with self.assertRaises(ValueError):
+            normalize_reference_groups(",, ;")
+
+    def test_normalize_reference_groups_all_alias_returns_supported_groups(self):
+        self.assertEqual(normalize_reference_groups("all"), SUPPORTED_REFERENCE_GROUPS)
+
+    def test_selected_reference_accessions_requires_features_column(self):
+        reference_sequences = pd.DataFrame([{"accession": "acc1", "group": "M"}])
+        with self.assertRaises(ValueError):
+            selected_reference_accessions(reference_sequences, ("M",), require_features=True)
+
+    def test_selected_reference_accessions_raises_when_none_match(self):
+        reference_sequences = pd.DataFrame([{"accession": "acc1", "group": "N"}])
+        with self.assertRaises(ValueError):
+            selected_reference_accessions(reference_sequences, ("M",))
+
     def test_has_reference_features_looks_up_accession_features(self):
         reference_sequences = pd.DataFrame([
             {"accession": "acc_with_features", "features": "{'gag': (1, 10)}"},
@@ -561,6 +605,14 @@ class TestPyHIV(TestCase):
         self.assertTrue(has_reference_features(reference_sequences, "acc_with_features"))
         self.assertFalse(has_reference_features(reference_sequences, "acc_without_features"))
         self.assertFalse(has_reference_features(reference_sequences, "missing"))
+
+    def test_normalize_splitting_mode_rejects_unknown_mode(self):
+        with self.assertRaises(ValueError):
+            normalize_splitting_mode("not-a-real-mode")
+
+    def test_normalize_reference_groups_rejects_unsupported_group(self):
+        with self.assertRaises(ValueError):
+            normalize_reference_groups("Z")
 
     def test_normalize_splitting_mode_accepts_new_modes(self):
         self.assertEqual(normalize_splitting_mode(True, subtyping=True), SPLITTING_MODE_SUBTYPE)
@@ -607,6 +659,20 @@ class TestPyHIV(TestCase):
         self.assertEqual(
             subtype_score_warning(
                 [(100, "acc_b-B"), (98, "acc_c-C")],
+                metadata_by_accession,
+            ),
+            "",
+        )
+
+    def test_subtype_score_warning_returns_empty_when_top_score_not_positive(self):
+        metadata_by_accession = {
+            "acc_b": {"group": "M", "subtype": "B"},
+            "acc_c": {"group": "M", "subtype": "C"},
+        }
+
+        self.assertEqual(
+            subtype_score_warning(
+                [(0, "acc_b-B"), (0, "acc_c-C")],
                 metadata_by_accession,
             ),
             "",

@@ -7,6 +7,19 @@ from Bio.SeqRecord import SeqRecord
 import pyhiv.align.align_with_reference as alignment
 
 
+class TestResolveWorkerCount(TestCase):
+    def test_resolve_worker_count_uses_explicit_n_jobs(self):
+        self.assertEqual(alignment.resolve_worker_count(4), 4)
+
+    def test_resolve_worker_count_falls_back_to_cpu_count(self):
+        with mock.patch("pyhiv.align.align_with_reference.os.cpu_count", return_value=8):
+            self.assertEqual(alignment.resolve_worker_count(None), 8)
+
+    def test_resolve_worker_count_falls_back_to_one_when_cpu_count_unknown(self):
+        with mock.patch("pyhiv.align.align_with_reference.os.cpu_count", return_value=None):
+            self.assertEqual(alignment.resolve_worker_count(0), 1)
+
+
 class TestCalculateAlignmentScore(TestCase):
     def test_valid_score(self):
         """Should count matching bases ignoring case and gaps."""
@@ -67,6 +80,25 @@ class TestProcessAlignment(TestCase):
 class TestKmerShortlist(TestCase):
     def test_kmers_filters_ambiguous_bases_and_gaps(self):
         self.assertEqual(alignment.kmers("AAC-GTN", 3), {"AAC"})
+
+    def test_kmers_rejects_non_positive_size(self):
+        with self.assertRaises(ValueError):
+            alignment.kmers("ACGT", 0)
+
+    def test_kmers_returns_empty_set_for_short_sequence(self):
+        self.assertEqual(alignment.kmers("AC", 5), set())
+
+    def test_kmer_shortlist_falls_back_to_prefix_when_query_has_no_kmers(self):
+        query = SeqRecord(Seq("NNNN"), id="query")
+        references = [
+            SeqRecord(Seq("AAAA"), id="ref1", name="ref1"),
+            SeqRecord(Seq("CCCC"), id="ref2", name="ref2"),
+            SeqRecord(Seq("GGGG"), id="ref3", name="ref3"),
+        ]
+
+        result = alignment.kmer_shortlist(query, references, size=4, top_k=2)
+
+        self.assertEqual(result, references[:2])
 
     def test_kmer_shortlist_ranks_by_query_containment(self):
         query = SeqRecord(Seq("AAAACCCCGGGG"), id="query")
@@ -319,3 +351,61 @@ class TestAlignWithReferences(TestCase):
         self.assertEqual(dummy_executor.submit.call_count, 1)
         submitted_ref = dummy_executor.submit.call_args.args[2]
         self.assertEqual(submitted_ref.id, "keep-A1")
+
+    @mock.patch("pyhiv.align.align_with_reference.kmer_shortlist", return_value=[])
+    @mock.patch("logging.error")
+    def test_no_candidates_selected_by_kmer_prefilter(self, mock_log, mock_shortlist):
+        """Should log error and return None when the k-mer prefilter finds no candidates."""
+        (self.ref_dir / "ref1.fasta").write_text(">ref1\nAAA\n")
+
+        result = alignment.align_with_references(self.test_seq, references_dir=self.ref_dir)
+
+        self.assertIsNone(result)
+        mock_log.assert_called_with("No reference sequences selected by k-mer prefilter.")
+
+    @mock.patch("pyhiv.align.align_with_reference.as_completed")
+    @mock.patch("pyhiv.align.align_with_reference.ProcessPoolExecutor")
+    def test_returns_none_when_no_alignment_results(self, mock_executor, mock_as_completed):
+        """Should return None when every submitted alignment task fails."""
+        (self.ref_dir / "ref1.fasta").write_text(">ref1\nAAA\n")
+
+        class DummyFuture:
+            def result(self):
+                return None
+
+        dummy_future = DummyFuture()
+        dummy_executor = mock.MagicMock()
+        dummy_executor.__enter__.return_value = dummy_executor
+        dummy_executor.__exit__.return_value = False
+        dummy_executor.submit.return_value = dummy_future
+        mock_executor.return_value = dummy_executor
+        mock_as_completed.return_value = [dummy_future]
+
+        result = alignment.align_with_references(self.test_seq, references_dir=self.ref_dir, n_jobs=1)
+
+        self.assertIsNone(result)
+
+    @mock.patch("pyhiv.align.align_with_reference.as_completed")
+    @mock.patch("pyhiv.align.align_with_reference.ProcessPoolExecutor")
+    def test_reuses_caller_supplied_executor_instead_of_owning_one(self, mock_executor_cls, mock_as_completed):
+        """Should submit tasks to a caller-supplied executor and not create its own pool."""
+        (self.ref_dir / "ref1.fasta").write_text(">ref1\nAAA\n")
+
+        class DummyFuture:
+            def result(self):
+                return (10, "TEST", "REF", "ref1")
+
+        dummy_future = DummyFuture()
+        shared_executor = mock.MagicMock()
+        shared_executor.submit.return_value = dummy_future
+        mock_as_completed.return_value = [dummy_future]
+
+        result = alignment.align_with_references(
+            self.test_seq,
+            references_dir=self.ref_dir,
+            executor=shared_executor,
+        )
+
+        self.assertEqual(result, ("TEST", "REF", "ref1"))
+        shared_executor.submit.assert_called_once()
+        mock_executor_cls.assert_not_called()

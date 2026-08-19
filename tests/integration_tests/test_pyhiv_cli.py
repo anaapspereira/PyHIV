@@ -6,7 +6,14 @@ import pytest
 from click.testing import CliRunner
 
 from pyhiv import __version__
-from pyhiv.cli import cli, validate_n_jobs
+from pyhiv.cli import (
+    cli,
+    validate_n_jobs,
+    validate_positive,
+    validate_reference_groups,
+    validate_reference_top_k,
+    validate_splitting,
+)
 from tests import TEST_DIR
 
 DATA_DIR = TEST_DIR / "data" / "fastas"
@@ -307,6 +314,155 @@ class TestPyHIVCLI(TestCase):
         self.assertIn("Reference dataset is up to date.", result.output)
         self.assertIn("Sequences with locations:", result.output)
 
+    @patch.dict("os.environ", {}, clear=True)
+    def test_update_reference_dataset_cli_refresh_features_requires_email(self):
+        """Test --refresh-features without an email raises a usage error."""
+        result = self.runner.invoke(
+            cli,
+            [
+                "update-reference-dataset",
+                "--reference-dir",
+                str(REFERENCE_BASE),
+                "--refresh-features",
+                "--yes",
+            ],
+        )
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("--refresh-features needs an NCBI email", result.output)
+
+    def test_update_reference_dataset_cli_prompts_without_yes_or_dry_run(self):
+        """Test the command aborts when confirmation is declined."""
+        result = self.runner.invoke(
+            cli,
+            ["update-reference-dataset", "--reference-dir", str(REFERENCE_BASE)],
+            input="n\n",
+        )
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("Continue?", result.output)
+
+    @patch("pyhiv.loading.reference_update.update_reference_dataset")
+    def test_update_reference_dataset_cli_confirms_then_runs(self, mock_update):
+        """Test the command proceeds once confirmation is accepted."""
+
+        class Result:
+            up_to_date = True
+            added_sequences = 0
+            added_rows = 0
+            updated_feature_rows = 0
+            total_references = 10
+            reference_fastas_dir = REFERENCE_BASE / "reference_fastas"
+            sequences_with_locations = REFERENCE_BASE / "sequences_with_locations.tsv"
+            lanl_alignment_year = 2023
+            lanl_alignment_updated = False
+            lanl_fasta_records = 10
+            lanl_fasta_files_added = 0
+            lanl_fasta_files_updated = 0
+            failed_sequences = 0
+            failed_accessions = ()
+
+        mock_update.return_value = Result()
+
+        result = self.runner.invoke(
+            cli,
+            ["update-reference-dataset", "--reference-dir", str(REFERENCE_BASE)],
+            input="y\n",
+        )
+        self.assertEqual(result.exit_code, 0)
+        mock_update.assert_called_once()
+
+    @patch("pyhiv.loading.reference_update.update_reference_dataset", side_effect=Exception("boom"))
+    def test_update_reference_dataset_cli_reports_update_error(self, mock_update):
+        """Test the command reports a clean error when the update raises."""
+        result = self.runner.invoke(
+            cli,
+            [
+                "update-reference-dataset",
+                "--reference-dir",
+                str(REFERENCE_BASE),
+                "--yes",
+            ],
+        )
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("Error updating reference dataset: boom", result.output)
+
+    @patch("pyhiv.loading.reference_update.update_reference_dataset")
+    def test_update_reference_dataset_cli_dry_run_pending_update(self, mock_update):
+        """Test the dry-run summary is printed when an update is available."""
+
+        class Result:
+            up_to_date = False
+            added_sequences = 3
+            added_rows = 3
+            updated_rows = 1
+            updated_feature_rows = 0
+            total_references = 10
+            reference_fastas_dir = REFERENCE_BASE / "reference_fastas"
+            sequences_with_locations = REFERENCE_BASE / "sequences_with_locations.tsv"
+            lanl_alignment_year = 2023
+            lanl_alignment_updated = True
+            lanl_fasta_records = 10
+            lanl_fasta_files_added = 1
+            lanl_fasta_files_updated = 1
+            lanl_fasta_files_removed = 0
+            pending_ncbi_references = 0
+            pending_ncbi_accessions = ()
+            failed_sequences = 0
+            failed_accessions = ()
+
+        mock_update.return_value = Result()
+
+        result = self.runner.invoke(
+            cli,
+            [
+                "update-reference-dataset",
+                "--reference-dir",
+                str(REFERENCE_BASE),
+                "--dry-run",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Reference dataset update available:", result.output)
+        self.assertIn("3 sequence(s) would be added", result.output)
+
+    @patch("pyhiv.loading.reference_update.update_reference_dataset")
+    def test_update_reference_dataset_cli_reports_pending_and_skipped_accessions(self, mock_update):
+        """Test pending NCBI and skipped GenBank accessions are surfaced after a successful update."""
+
+        class Result:
+            up_to_date = False
+            added_sequences = 1
+            added_rows = 1
+            updated_rows = 0
+            updated_feature_rows = 0
+            total_references = 10
+            reference_fastas_dir = REFERENCE_BASE / "reference_fastas"
+            sequences_with_locations = REFERENCE_BASE / "sequences_with_locations.tsv"
+            lanl_alignment_year = 2023
+            lanl_alignment_updated = False
+            lanl_fasta_records = 10
+            lanl_fasta_files_added = 0
+            lanl_fasta_files_updated = 0
+            lanl_fasta_files_removed = 0
+            pending_ncbi_references = 1
+            pending_ncbi_accessions = ("AB123456",)
+            failed_sequences = 1
+            failed_accessions = ("CD654321",)
+
+        mock_update.return_value = Result()
+
+        result = self.runner.invoke(
+            cli,
+            [
+                "update-reference-dataset",
+                "--reference-dir",
+                str(REFERENCE_BASE),
+                "--yes",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Authoritative reference pending NCBI: AB123456", result.output)
+        self.assertIn("Skipped GenBank accession(s): CD654321", result.output)
+
     def test_run_cli_verbose_and_quiet_conflict(self):
         """Test that CLI raises UsageError if both --verbose and --quiet are used."""
         result = self.runner.invoke(
@@ -335,6 +491,35 @@ class TestPyHIVCLI(TestCase):
         with pytest.raises(Exception) as exc:
             validate_n_jobs(ctx, param, 0)
         assert "must be at least 1" in str(exc.value)
+
+    def test_validate_positive_invalid(self):
+        """Test that validate_positive raises BadParameter for values < 1."""
+        with pytest.raises(Exception) as exc:
+            validate_positive(None, None, 0)
+        assert "must be at least 1" in str(exc.value)
+
+    def test_validate_reference_top_k_invalid(self):
+        """Test that validate_reference_top_k raises BadParameter for negative values."""
+        with pytest.raises(Exception) as exc:
+            validate_reference_top_k(None, None, -1)
+        assert "must be at least 0" in str(exc.value)
+
+    def test_validate_reference_groups_invalid(self):
+        """Test that validate_reference_groups raises BadParameter for unknown groups."""
+        with pytest.raises(Exception) as exc:
+            validate_reference_groups(None, None, "not-a-real-group")
+        assert "not-a-real-group" in str(exc.value) or len(str(exc.value)) > 0
+
+    def test_validate_splitting_passes_through_bool(self):
+        """Test that validate_splitting returns booleans unchanged."""
+        assert validate_splitting(None, None, True) is True
+        assert validate_splitting(None, None, False) is False
+
+    def test_validate_splitting_invalid(self):
+        """Test that validate_splitting raises BadParameter for an unknown mode."""
+        with pytest.raises(Exception) as exc:
+            validate_splitting(None, None, "not-a-real-mode")
+        assert len(str(exc.value)) > 0
 
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
     @patch("pyhiv.PyHIV")
