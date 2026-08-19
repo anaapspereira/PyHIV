@@ -95,7 +95,7 @@ PyHIV(
 | `subtyping`  | `bool` | `True`            | Aligns against subtype reference genomes. If `False`, aligns only to HXB2. |
 | `splitting`  | `bool` or `str` | `True` | Splits aligned sequences into gene regions. Use `True`/`"subtype"` to split by the best subtype reference when it has annotated features, with automatic HXB2 fallback when features are missing; use `"hxb2"`/`"reference"` to subtype but always split against HXB2, or `False`/`"none"` to skip splitting. |
 | `output_dir` | `str`  | `"PyHIV_results"` | Output directory for results.                                              |
-| `n_jobs`     | `int`  | `None`            | Number of parallel jobs for alignment.                                     |
+| `n_jobs`     | `int`  | `None`            | Number of parallel worker processes, created once per run and reused for every sequence. `None` uses all available CPU cores. |
 | `reporting`  | `bool` | `True`            | Generates a PDF report (`PyHIV_report_all_sequences.pdf`) with per-sequence visualizations. |
 | `alignment_tool` | `str` | `"edlib-HW"` | Alignment backend: `edlib-HW`, `parasail-NW`/`parasail`, `MAFFT`, or `PyFamsa`. |
 | `kmer_size` | `int` | `15` | K-mer size used to prefilter candidate references. |
@@ -110,6 +110,10 @@ When `subtyping=False`, any active splitting mode is treated as HXB2-based split
 When `subtyping=True` and `splitting=True`, PyHIV keeps the selected subtype reference in the `Reference` column. If that reference has no annotated `features` in `sequences_with_locations.tsv`, PyHIV splits against HXB2 instead and records `K03455` in `Splitting Reference`; the PDF report also shows the splitting reference.
 
 Input sequences longer than 12000 nucleotides are skipped with this warning: `The submitted sequence is longer than the HIV-1 genome.`
+
+`fastas_dir` is searched recursively, but `output_dir` is always excluded from that search — so setting `output_dir` to a subfolder of `fastas_dir` is safe and won't cause a rerun to re-ingest files from a previous run.
+
+The reference dataset root (`reference_fastas/`, `HXB2_fasta/`, `sequences_with_locations.tsv`) is resolved from the `REFERENCE_GENOMES_DIR` environment variable, falling back to the packaged `reference_genomes` directory. Set it to point PyHIV at a custom or offline reference dataset, e.g. one prepared with `pyhiv update reference-dataset --reference-dir <path>`.
 
 ### 📂 Output Structure
 
@@ -144,7 +148,7 @@ PyHIV_results/
 | **Group**                     | Predicted HIV-1 reference group                 |
 | **Subtype**                   | Predicted HIV-1 subtype                         |
 | **Closest Subtypes**          | Top 3 closest group/subtype calls by alignment score |
-| **Subtype Score Warning**     | Flags a low relative score margin between the top subtype matches, worth manual review |
+| **Subtype Score Warning**     | `Low score margin: review top 3 subtype matches` when the top two subtype scores are within 1% of each other, otherwise empty |
 | **Splitting Reference**       | Reference accession used for gene splitting     |
 | **Most Matching Gene Region** | Region with highest similarity                  |
 | **Present Gene Regions**      | All detected gene regions with valid alignments |
@@ -236,7 +240,7 @@ pyhiv update reference-dataset --help # Show options for the reference dataset u
 pyhiv --version                       # Show version
 ```
 
-For comprehensive documentation, see [CLI_README.md](CLI.md).
+For comprehensive documentation, see [CLI.md](CLI.md).
 
 ---
 
