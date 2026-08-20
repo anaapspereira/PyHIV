@@ -46,6 +46,13 @@ class TestAlignmentTools(TestCase):
 
         self.assertIn("pip install pyhiv-tools[parasail]", str(ctx.exception))
 
+    def test_validate_alignment_tool_available_pyfamsa_missing_has_install_message(self):
+        with mock.patch.dict("sys.modules", {"pyfamsa": None}):
+            with self.assertRaises(RuntimeError) as ctx:
+                tools.validate_alignment_tool_available("PyFamsa")
+
+        self.assertIn("pip install pyhiv-tools[famsa]", str(ctx.exception))
+
     def test_validate_alignment_tool_available_mafft_missing_has_install_message(self):
         with mock.patch("pyhiv.align.tools.get_mafft_binary", return_value=None):
             with self.assertRaises(RuntimeError) as ctx:
