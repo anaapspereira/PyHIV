@@ -77,6 +77,16 @@ It produces:
 pip install pyhiv-tools
 ```
 
+This installs the default `edlib-HW` alignment backend. Two other backends are
+available as optional extras:
+
+```bash
+pip install pyhiv-tools[parasail]  # parasail-NW backend
+pip install pyhiv-tools[famsa]     # PyFamsa backend (GPL-3.0 licensed, kept out of the default MIT install)
+```
+
+`MAFFT` is also available as a backend, but requires a separate `mafft` executable on `PATH` (not installed via pip). See [Requirements](#requirements) below.
+
 ### From Source
 
 ```bash
@@ -99,10 +109,10 @@ pip install -e ".[dev]"
 - pandas
 - biopython
 - edlib
-- pyfamsa
 - click
 - matplotlib
 - parasail (optional, only for `--alignment-tool parasail-NW`; install with `pip install pyhiv-tools[parasail]`)
+- pyfamsa (optional, only for `--alignment-tool PyFamsa`; install with `pip install pyhiv-tools[famsa]`; GPL-3.0 licensed, kept out of the default MIT install)
 ## 🚀 Getting Started
 
 ### Quick Start (CLI)
@@ -154,7 +164,7 @@ PyHIV(
 | `reference_top_k` | `int` | `30` | Number of top k-mer ranked references to align. Use `0` to align all references. |
 | `reference_groups` | `str` or iterable | `"M"` | HIV-1 reference groups used for subtyping. Use `"M,N,O,P"` to include groups N, O, and P. |
 
-`edlib-HW` is the default and projects alignments onto full-reference genome coordinates. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` remain available as alternatives. Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `reference_top_k=0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; set `reference_groups="M,N,O,P"` to include groups N, O, and P. `edlib` and `PyFamsa` are installed with PyHIV. `parasail` is an optional extra — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon). `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
+`edlib-HW` is the default and projects alignments onto full-reference genome coordinates. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` remain available as alternatives. Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `reference_top_k=0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; set `reference_groups="M,N,O,P"` to include groups N, O, and P. `edlib` is installed with PyHIV. `parasail` and `PyFamsa` are optional extras. `parasail` — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon). `PyFamsa` — install with `pip install pyhiv-tools[famsa]` — since `pyfamsa` is GPL-3.0 licensed and is kept out of the default (MIT) install. `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
 
 When `subtyping=False`, any active splitting mode is treated as HXB2-based splitting, even if `splitting="subtype"` is provided.
 
