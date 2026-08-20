@@ -145,7 +145,8 @@ PyHIV(
     alignment_tool="edlib-HW",
     kmer_size=15,
     reference_top_k=30,
-    reference_groups="M"
+    reference_groups="M",
+    show_progress=False,
 )
 ```
 
@@ -157,13 +158,15 @@ PyHIV(
 | `subtyping`  | `bool` | `True`            | Aligns against subtype reference genomes. If `False`, aligns only to HXB2. |
 | `splitting`  | `bool` or `str` | `True` | Splits aligned sequences into gene regions. Use `True`/`"subtype"` to split by the best subtype reference when it has annotated features, with automatic HXB2 fallback when features are missing; use `"hxb2"`/`"reference"` to subtype but always split against HXB2, or `False`/`"none"` to skip splitting. |
 | `output_dir` | `str`  | `"PyHIV_results"` | Output directory for results.                                              |
-| `n_jobs`     | `int`  | `None`            | Number of parallel jobs for alignment.                                     |
-| `reporting`  | `bool` | `True`            | Generates PDF report with sequence visualizations.                         |
+| `n_jobs`     | `int`  | `None`            | Number of parallel worker processes, created once per run and reused for every sequence. `None` uses all available CPU cores. |
+| `reporting`  | `bool` | `True`            | Generates a PDF report (`PyHIV_report_all_sequences.pdf`) with per-sequence visualizations. |
 | `alignment_tool` | `str` | `"edlib-HW"` | Alignment backend: `edlib-HW`, `parasail-NW`/`parasail`, `MAFFT`, or `PyFamsa`. |
 | `kmer_size` | `int` | `15` | K-mer size used to prefilter candidate references. |
 | `reference_top_k` | `int` | `30` | Number of top k-mer ranked references to align. Use `0` to align all references. |
-| `reference_groups` | `str` or iterable | `"M"` | HIV-1 reference groups used for subtyping. Use `"M,N,O,P"` to include groups N, O, and P. |
+| `reference_groups` | `str` or iterable | `"M"` | HIV-1 reference groups used for subtyping. Use `"M,N,O,P"` or `"all"` to include groups N, O, and P. |
+| `show_progress` | `bool` | `False` | Displays a terminal progress bar for processed input sequences.            |
 
+`edlib-HW` is the default and projects alignments onto full-reference genome coordinates. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` remain available as alternatives. Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `reference_top_k=0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; set `reference_groups="M,N,O,P"` (or `"all"`) to include groups N, O, and P. `edlib` and `PyFamsa` are installed with PyHIV. `parasail` is an optional extra — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon). `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`. PyHIV validates that the selected `alignment_tool` is actually available before processing starts and raises immediately with an install hint if it isn't, instead of failing per-reference partway through a run.
 `edlib-HW` is the default and projects alignments onto full-reference genome coordinates. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` remain available as alternatives. Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `reference_top_k=0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; set `reference_groups="M,N,O,P"` to include groups N, O, and P. `edlib` is installed with PyHIV. `parasail` and `PyFamsa` are optional extras. `parasail` — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon). `PyFamsa` — install with `pip install pyhiv-tools[famsa]` — since `pyfamsa` is GPL-3.0 licensed and is kept out of the default (MIT) install. `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
 
 When `subtyping=False`, any active splitting mode is treated as HXB2-based splitting, even if `splitting="subtype"` is provided.
@@ -171,6 +174,8 @@ When `subtyping=False`, any active splitting mode is treated as HXB2-based split
 When `subtyping=True` and `splitting=True`, PyHIV keeps the selected subtype reference in the `Reference` column. If that reference has no annotated `features` in `sequences_with_locations.tsv`, PyHIV splits against HXB2 instead and records `K03455` in `Splitting Reference`; the PDF report also shows the splitting reference.
 
 Input sequences longer than 12000 nucleotides are skipped with this warning: `The submitted sequence is longer than the HIV-1 genome.`
+
+`fastas_dir` is searched recursively, but `output_dir` is always excluded from that search — so setting `output_dir` to a subfolder of `fastas_dir` is safe and won't cause a rerun to re-ingest files from a previous run. The reference dataset root is resolved from the `REFERENCE_GENOMES_DIR` environment variable, falling back to the packaged `reference_genomes` directory — set it to point PyHIV at a custom or offline reference dataset, e.g. one prepared with `pyhiv update reference-dataset --reference-dir <path>`. See [CLI_README.md](CLI_README.md) for the full environment variable reference.
 
 ### 📂 Output Structure
 
@@ -205,6 +210,7 @@ PyHIV_results/
 | **Group**                     | Predicted HIV-1 reference group                 |
 | **Subtype**                   | Predicted HIV-1 subtype                         |
 | **Closest Subtypes**          | Top 3 closest group/subtype calls by alignment score |
+| **Subtype Score Warning**     | `Low score margin: review top 3 subtype matches` when the top two subtype scores are within 1% of each other, otherwise empty |
 | **Splitting Reference**       | Reference accession used for gene splitting     |
 | **Most Matching Gene Region** | Region with highest similarity                  |
 | **Present Gene Regions**      | All detected gene regions with valid alignments |
@@ -230,6 +236,9 @@ pyhiv run sequences/ -j 8
 
 # Validate input files before processing
 pyhiv validate sequences/
+
+# Refresh the packaged reference dataset
+pyhiv update reference-dataset --yes
 ```
 
 ### ⚙️ Main Options
@@ -240,8 +249,12 @@ pyhiv validate sequences/
 | `--splitting TEXT` | Splitting mode: `true`/`subtype`, `hxb2`/`reference`, or `false`/`none` (default: `true`). If `--subtyping false`, active splitting uses HXB2. |
 | `-o`, `--output-dir PATH` | Output directory (default: `PyHIV_results`) |
 | `-j`, `--n-jobs INTEGER` | Number of parallel jobs (default: all CPUs) |
+| `--progress` / `--no-progress` | Show a terminal progress bar (default: `--progress`) |
+| `--reporting` / `--no-reporting` | Generate a PDF report (default: `--reporting`) |
 | `-v`, `--verbose` | Detailed output |
 | `-q`, `--quiet` | Suppress non-error output |
+
+See [CLI_README.md](CLI_README.md) for the full option list, including `--alignment-tool`, `--kmer-size`, `--reference-top-k`, `--reference-groups`, and the `pyhiv update reference-dataset` command.
 
 ### 💼 Common Use Cases
 
@@ -278,10 +291,11 @@ pyhiv validate data/sequences/
 ### 🆘 Getting Help
 
 ```bash
-pyhiv --help           # Show all commands
-pyhiv run --help       # Show options for run command
-pyhiv validate --help # Show validation options
-pyhiv --version        # Show version
+pyhiv --help                          # Show all commands
+pyhiv run --help                      # Show options for run command
+pyhiv validate --help                 # Show validation options
+pyhiv update reference-dataset --help # Show options for the reference dataset updater
+pyhiv --version                       # Show version
 ```
 
 For comprehensive CLI documentation, see [CLI_README.md](CLI_README.md).
