@@ -128,11 +128,11 @@ def validate_alignment_tool_available(alignment_tool: str | None = DEFAULT_ALIGN
     elif tool == PYFAMSA:
         try:
             import pyfamsa  # noqa: F401
-        except ImportError as exc:  # pragma: no cover
+        except ImportError as exc:
             raise RuntimeError(
                 "PyFamsa is required for alignment_tool='PyFamsa'. "
-                "Install PyHIV dependencies with 'pip install pyhiv-tools' "
-                "or install pyfamsa directly with 'pip install pyfamsa'."
+                "Install it with 'pip install pyhiv-tools[famsa]' "
+                "or 'pip install pyfamsa'."
             ) from exc
 
     return tool

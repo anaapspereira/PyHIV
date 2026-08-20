@@ -1,6 +1,3 @@
-from pyfamsa import Aligner, Sequence
-
-
 def pyfamsa_align(test_seq, ref_seq):
     """
     Aligns a test sequence to a reference sequence using the pyfamsa library.
@@ -21,6 +18,10 @@ def pyfamsa_align(test_seq, ref_seq):
         ref_aligned : str
             The aligned reference sequence.
     """
+    try:
+        from pyfamsa import Aligner, Sequence
+    except ImportError as exc:  # pragma: no cover
+        raise ImportError("pyfamsa is required for alignment_tool='PyFamsa'.") from exc
 
     sequences = [
         Sequence(ref_seq.id.encode(), str(ref_seq.seq).encode()),
