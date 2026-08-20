@@ -7,8 +7,8 @@ import pyhiv.align.famsa as pyfamsa_module  # replace with your actual module
 
 class TestPyFamsaAlign(TestCase):
 
-    @mock.patch("pyhiv.align.famsa.Aligner")
-    @mock.patch("pyhiv.align.famsa.Sequence")
+    @mock.patch("pyfamsa.Aligner")
+    @mock.patch("pyfamsa.Sequence")
     def test_pyfamsa_align_returns_aligned_sequences(self, mock_sequence, mock_aligner):
         """Should return decoded aligned sequences in the correct order."""
         # Setup test sequences

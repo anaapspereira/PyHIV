@@ -29,6 +29,16 @@ PyHIV is a Python package that aligns HIV nucleotide sequences against reference
 pip install pyhiv-tools
 ```
 
+This installs the default `edlib-HW` alignment backend. Two other backends are
+available as optional extras:
+
+```bash
+pip install pyhiv-tools[parasail]  # parasail-NW backend
+pip install pyhiv-tools[famsa]     # PyFamsa backend (GPL-3.0 licensed, kept out of the default MIT install)
+```
+
+`MAFFT` is also available as a backend, but requires a separate `mafft` executable on `PATH` (not installed via pip). See [Requirements](#requirements) below.
+
 ## Quick Start
 
 ### Command Line Interface
@@ -98,12 +108,12 @@ PyHIV_results/
 - pandas
 - biopython
 - edlib
-- pyfamsa
 - click
 - matplotlib
 - parasail (optional, only for `--alignment-tool parasail-NW`; install with `pip install pyhiv-tools[parasail]`)
+- pyfamsa (optional, only for `--alignment-tool PyFamsa`; install with `pip install pyhiv-tools[famsa]`; GPL-3.0 licensed, kept out of the default MIT install)
 
-PyHIV supports `edlib-HW` (default), `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` as alignment tool names. `parasail-NW` requires the optional `parasail` extra. `MAFFT` requires an external `mafft` executable. Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `reference_top_k=0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; set `reference_groups="M,N,O,P"` to include groups N, O, and P. The final table and PDF report include the best `Group`/`Subtype` call plus a ranked `Closest Subtypes` field with the top 3 closest unique group/subtype calls.
+PyHIV supports `edlib-HW` (default), `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` as alignment tool names. `parasail-NW` requires the optional `parasail` extra. `PyFamsa` requires the optional `famsa` extra. `MAFFT` requires an external `mafft` executable. Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `reference_top_k=0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; set `reference_groups="M,N,O,P"` to include groups N, O, and P. The final table and PDF report include the best `Group`/`Subtype` call plus a ranked `Closest Subtypes` field with the top 3 closest unique group/subtype calls.
 
 PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
 

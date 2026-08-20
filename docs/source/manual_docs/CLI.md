@@ -13,8 +13,8 @@ pip install pyhiv-tools
 Or install from source:
 
 ```bash
-git clone https://github.com/anaapspereira/pyhiv.git
-cd pyhiv
+git clone https://github.com/anaapspereira/PyHIV.git
+cd PyHIV
 pip install -e .
 ```
 
@@ -121,11 +121,9 @@ pyhiv update reference-dataset --refresh-features --email you@example.com --yes
 | `--reference-top-k INTEGER` | `30` | Number of top k-mer ranked references to align; use `0` to align all references |
 | `--reference-groups TEXT` | `M` | Comma-separated HIV-1 reference groups used for subtyping; use `M,N,O,P` or `all` to include groups N, O, and P |
 
-`edlib-HW` is the default alignment backend. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` are available through `--alignment-tool`. `parasail-NW` requires the optional `parasail` extra — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon). PyHIV checks the selected tool is actually usable before processing starts, and exits immediately with an install hint if it isn't (e.g. missing `parasail`, or no `mafft` executable on `PATH`) rather than failing per-reference partway through a run.
+`edlib-HW` is the default alignment backend. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` are available through `--alignment-tool`. `parasail-NW` requires the optional `parasail` extra — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon). `PyFamsa` requires the optional `famsa` extra — install with `pip install pyhiv-tools[famsa]` — since `pyfamsa` is GPL-3.0 licensed and is kept out of the default (MIT) install. `MAFFT` requires an external `mafft` executable; PyHIV resolves it from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`. PyHIV checks the selected tool is actually usable before processing starts, and exits immediately with an install hint if it isn't (e.g. missing `parasail`, or no `mafft` executable on `PATH`) rather than failing per-reference partway through a run.
 
-Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `--reference-top-k 0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; use `--reference-groups M,N,O,P` (or `--reference-groups all`) to include groups N, O, and P.
-
-MAFFT can be configured with `PYHIV_MAFFT_BIN` or discovered as `mafft` on `PATH`.
+Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `--reference-top-k 0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; use `--reference-groups M,N,O,P` (or `--reference-groups all`) to include groups N, O, and P. This `M`-only default only applies when splitting is enabled or `--reference-groups` is set explicitly; if splitting is disabled and `--reference-groups` is omitted, all reference groups are eligible.
 
 Sequences longer than 12000 nucleotides are skipped with this warning: `The submitted sequence is longer than the HIV-1 genome.`
 
