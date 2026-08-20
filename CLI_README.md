@@ -73,7 +73,7 @@ pyhiv --version
 
 **Expected output:**
 ```
-pyhiv, version 1.0.0
+PyHIV, version 1.0.0
 ```
 
 ## 🚀 Getting Started
@@ -260,7 +260,7 @@ pyhiv run sequences/ -j 1
 
 `edlib-HW` is the default and projects alignments onto full-reference genome coordinates. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` remain available through `--alignment-tool`. `edlib` is installed with PyHIV. `parasail` and `PyFamsa` are optional extras: `parasail` — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon); `PyFamsa` — install with `pip install pyhiv-tools[famsa]` — since `pyfamsa` is GPL-3.0 licensed and is kept out of the default (MIT) install. `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`. PyHIV checks the selected tool is actually usable before processing starts, and exits immediately with an install hint if it isn't (e.g. missing `parasail`, or no `mafft` executable on `PATH`) rather than failing per-reference partway through a run.
 
-Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `--reference-top-k 0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; use `--reference-groups M,N,O,P` (or `--reference-groups all`) to include groups N, O, and P.
+Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `--reference-top-k 0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; use `--reference-groups M,N,O,P` (or `--reference-groups all`) to include groups N, O, and P. This `M`-only default only applies when splitting is enabled or `--reference-groups` is set explicitly; if splitting is disabled and `--reference-groups` is omitted, all reference groups are eligible.
 
 Sequences longer than 12000 nucleotides are skipped with this warning: `The submitted sequence is longer than the HIV-1 genome.`
 
