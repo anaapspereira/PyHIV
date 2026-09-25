@@ -81,7 +81,8 @@ PyHIV(
     alignment_tool="edlib-HW",
     kmer_size=15,
     reference_top_k=30,
-    reference_groups="M"
+    reference_groups="M",
+    mutations=False
 )
 ```
 
@@ -98,6 +99,7 @@ PyHIV(
 | `kmer_size` | `int` | `15` | K-mer size used to prefilter candidate references. |
 | `reference_top_k` | `int` | `30` | Number of top k-mer ranked references to align. Use `0` to align all references. |
 | `reference_groups` | `str` or iterable | `"M"` | HIV-1 reference groups used for subtyping. Use `"M,N,O,P"` to include groups N, O, and P. |
+| `mutations` | `bool` | `False` | Calls amino-acid mutations for supported split genes and writes mutation, DRM, and per-position QC outputs. |
 
 `edlib-HW` is the default and projects alignments onto full-reference genome coordinates. `parasail-NW`/`parasail`, `PyFamsa`, and `MAFFT` remain available as alternatives. Before final alignment, PyHIV ranks references using query/reference k-mer containment and aligns only the top candidates by default. Use `reference_top_k=0` to keep the original all-reference strategy. By default, subtyping uses group M references from `reference_fastas`, selected through the `group` column in `sequences_with_locations.tsv`; set `reference_groups="M,N,O,P"` to include groups N, O, and P. `edlib` is installed with PyHIV. `parasail` and `PyFamsa` are optional extras. `parasail` — install with `pip install pyhiv-tools[parasail]` — since it has no prebuilt wheel on some platforms (e.g. macOS on Apple Silicon). `PyFamsa` — install with `pip install pyhiv-tools[famsa]` — since `pyfamsa` is GPL-3.0 licensed and is kept out of the default (MIT) install. `MAFFT` requires an external `mafft` executable. PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
 
@@ -117,6 +119,11 @@ PyHIV_results/
 ├── best_alignment_<file_stem>_<sequence>.fasta      # Alignment to best reference
 ├── splitting_alignment_<file_stem>_<sequence>.fasta # HXB2 alignment when splitting uses HXB2 with subtyping
 ├── final_table.tsv                     # Summary of results
+├── mutations.tsv                       # Mutation calls, if mutations=True
+├── mutation_position_qc.tsv            # Per-position coverage/QC, if mutations=True
+├── drm_screening.tsv                   # Per-DRM-position screening, if mutations=True
+├── drm_screening_summary.tsv           # Per-sequence DRM completeness, if mutations=True
+├── mutation_matrix_<GENE>.tsv          # Compact mutation matrices, if mutations=True
 │
 ├── gag/
 │   ├── <file_stem>_<sequence>_gag.fasta
@@ -142,6 +149,10 @@ PyHIV_results/
 | **Splitting Reference**       | Reference accession used for gene splitting     |
 | **Most Matching Gene Region** | Region with highest similarity                  |
 | **Present Gene Regions**      | All detected gene regions with valid alignments |
+| **DRM Count**                 | Number of resolved DRM calls, when mutation calling is enabled |
+| **DRMs**                      | Resolved DRM mutation names, when mutation calling is enabled |
+| **DRM Classes**               | Drug classes for resolved DRMs, when mutation calling is enabled |
+| **DRM Evaluation Status**     | `COMPLETE`, `PARTIAL`, or `UNRESOLVED` DRM screening status |
 
 
 ---
@@ -173,6 +184,7 @@ pyhiv validate sequences/
 | `-j`, `--n-jobs INTEGER` | Number of parallel jobs (default: all CPUs) |
 | `-v`, `--verbose` | Detailed output |
 | `-q`, `--quiet` | Suppress non-error output |
+| `--mutations / --no-mutations` | Enable amino-acid mutation calling and DRM/QC outputs (default: disabled). |
 
 ### 💼 Common Use Cases
 
@@ -210,6 +222,7 @@ pyhiv validate data/sequences/
 
 PyHIV generates:
 - `final_table.tsv` - Summary with sequence IDs, references, group/subtype calls, closest subtypes, and gene regions
+- `mutations.tsv`, `mutation_position_qc.tsv`, `drm_screening.tsv`, and `drm_screening_summary.tsv` when mutation calling is enabled
 - `best_alignment_*.fasta` - Best alignment for each sequence
 - Gene-specific folders (when `--splitting` is enabled) with extracted regions
 

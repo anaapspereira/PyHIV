@@ -30,6 +30,8 @@ def render_sequence_page(
     splitting_accession: Optional[str] = None,
     file_name: str = "-",
     subtype_score_warning: str = "",
+    drms: str = "",
+    drm_count: str = "",
 ):
     """
     Render a single sequence page in the PDF report.
@@ -98,6 +100,8 @@ def render_sequence_page(
         meta_lines.append(f"Subtype score warning: {subtype_score_warning}")
     if splitting_accession:
         meta_lines.append(f"Splitting Reference: {splitting_accession}")
+    if drms and drms != "-":
+        meta_lines.append(f"DRMs ({drm_count or '0'}): {drms}")
 
     meta_lines.extend([
         f"Most matching region: {mm_region or '-'}",

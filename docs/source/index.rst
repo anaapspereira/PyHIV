@@ -12,6 +12,6 @@ PyHIV documentation
 
    Introduction <manual_docs/PyHIV>
    Command Line Interface <manual_docs/CLI>
+   Mutation Calling <manual_docs/MutationCalling>
 
    modules
-

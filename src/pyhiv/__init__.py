@@ -41,6 +41,14 @@ FINAL_TABLE_SPLITTING_COLUMNS = [
     'Most Matching Gene Region',
     'Present Gene Regions',
 ]
+FINAL_TABLE_MUTATION_COLUMNS = [
+    'DRM Count',
+    'DRMs',
+    'DRM Classes',
+    'DRM Evaluation Status',
+    'Accessory Mutation Count',
+    'Accessory Mutations',
+]
 MAX_HIV1_SEQUENCE_LENGTH = 12000
 SEQUENCE_TOO_LONG_WARNING = "The submitted sequence is longer than the HIV-1 genome."
 DEFAULT_REFERENCE_GROUPS = ("M",)
@@ -77,6 +85,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
           kmer_size: int = DEFAULT_KMER_SIZE,
           reference_top_k: int = DEFAULT_REFERENCE_TOP_K,
           reference_groups=None,
+          mutations: bool = False,
           show_progress: bool = False):
     """
     Main function to run the PyHIV pipeline.
@@ -94,6 +103,8 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     subtyping. When splitting is enabled, omitted groups default to group M.
     When splitting is disabled, omitted groups allow all FASTA references.
     Use ("M", "N", "O", "P") to include all known groups.
+    mutations enables amino-acid mutation calling on supported split gene
+    regions (PR, RT, IN, and CA) and writes mutations.tsv.
     show_progress displays a terminal progress bar for processed input sequences.
     """
     paths = get_reference_paths()
@@ -101,6 +112,12 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     splitting_mode = normalize_splitting_mode(splitting, subtyping=subtyping)
     alignment_tool = validate_alignment_tool_available(alignment_tool)
     should_split = splitting_mode != SPLITTING_MODE_NONE
+    if mutations and not should_split:
+        logging.warning(
+            "Mutation calling requires gene-region splitting; using HXB2 splitting even though splitting was disabled."
+        )
+        splitting_mode = SPLITTING_MODE_HXB2
+        should_split = True
 
     fastas_dir = Path(fastas_dir)
     output_dir = Path(output_dir) if output_dir else Path('PyHIV_results')
@@ -119,6 +136,7 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
 
     final_table_columns = final_table_columns_for_splitting(should_split)
     rows: list[list] = []
+    split_output_files: list[Path] = []
 
     sequence_context = nullcontext(user_fastas)
     if show_progress:
@@ -146,10 +164,18 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
                 allowed_reference_accessions=allowed_reference_accessions,
                 reference_sequences=reference_sequences,
                 metadata_by_accession=metadata_by_accession,
+                split_output_files=split_output_files,
                 executor=executor,
             )
 
     final_table = pd.DataFrame(rows, columns=final_table_columns)
+    if mutations:
+        mutation_calls, drm_screening_summaries = write_mutations_files(
+            split_output_files, output_dir
+        )
+        final_table = append_drm_summary(
+            final_table, mutation_calls, drm_screening_summaries
+        )
     final_table.to_csv(output_dir / 'final_table.tsv', sep='\t', index=False)
     
     # Generate PDF report if requested
@@ -182,6 +208,7 @@ def process_fasta_sequence(
     allowed_reference_accessions,
     reference_sequences: pd.DataFrame,
     metadata_by_accession: dict,
+    split_output_files: list[Path] | None = None,
     executor: Executor | None = None,
 ) -> None:
         sequence_name = fasta.id
@@ -322,6 +349,8 @@ def process_fasta_sequence(
                     original_suffix = slugify_feature_name(gene)
                     gene_file = gene_path / f"{output_label}_{original_suffix}.fasta"
                 written_region_files.add(gene_file)
+                if split_output_files is not None:
+                    split_output_files.append(gene_file)
                 with open(gene_file, 'w') as output_file:
                     aln_start, aln_end = aligned_gene_ranges[gene]
                     seq_fragment = splitting_test_aligned[aln_start:aln_end+1]
@@ -352,6 +381,132 @@ def process_fasta_sequence(
             ]
 
         rows.append(row_data)
+
+
+def write_mutations_files(split_output_files: list[Path], output_dir: Path):
+    from pyhiv.mutations import (
+        call_mutations_for_fasta_files_with_qc,
+        sequence_gene_pairs_from_fasta_files,
+        write_drm_screening_tsv,
+        write_mutation_matrices_tsv,
+        write_mutation_position_qc_tsv,
+        write_mutations_tsv,
+    )
+
+    calls, drm_screening_summaries, position_qc_rows = call_mutations_for_fasta_files_with_qc(
+        split_output_files
+    )
+    write_mutations_tsv(calls, output_dir / "mutations.tsv")
+    write_mutation_position_qc_tsv(
+        position_qc_rows,
+        output_dir / "mutation_position_qc.tsv",
+    )
+    write_mutation_matrices_tsv(
+        calls,
+        output_dir,
+        sequence_gene_pairs=sequence_gene_pairs_from_fasta_files(split_output_files),
+    )
+    write_drm_screening_tsv(
+        drm_screening_summaries,
+        output_dir / "drm_screening.tsv",
+        output_dir / "drm_screening_summary.tsv",
+    )
+    return calls, drm_screening_summaries
+
+
+def write_mutations_file(split_output_files: list[Path], output_path: Path):
+    from pyhiv.mutations import (
+        call_mutations_for_fasta_files_with_qc,
+        sequence_gene_pairs_from_fasta_files,
+        write_drm_screening_tsv,
+        write_mutation_matrices_tsv,
+        write_mutation_position_qc_tsv,
+        write_mutations_tsv,
+    )
+
+    calls, drm_screening_summaries, position_qc_rows = call_mutations_for_fasta_files_with_qc(
+        split_output_files
+    )
+    write_mutations_tsv(calls, output_path)
+    write_mutation_position_qc_tsv(
+        position_qc_rows,
+        output_path.parent / "mutation_position_qc.tsv",
+    )
+    write_mutation_matrices_tsv(
+        calls,
+        output_path.parent,
+        sequence_gene_pairs=sequence_gene_pairs_from_fasta_files(split_output_files),
+    )
+    write_drm_screening_tsv(
+        drm_screening_summaries,
+        output_path.parent / "drm_screening.tsv",
+        output_path.parent / "drm_screening_summary.tsv",
+    )
+    return calls, drm_screening_summaries
+
+
+def append_drm_summary(
+    final_table: pd.DataFrame,
+    mutation_calls,
+    drm_screening_summaries=None,
+) -> pd.DataFrame:
+    from pyhiv.mutations import drm_screening_status_by_sequence
+
+    if drm_screening_summaries is None:
+        raise ValueError("DRM completeness summary requires DRM screening results.")
+    mutation_calls = list(mutation_calls)
+    drms_by_sequence: dict[str, list] = {}
+    accessories_by_sequence: dict[str, list] = {}
+    for call in mutation_calls:
+        if call.is_drm:
+            drms_by_sequence.setdefault(call.sequence_id, []).append(call)
+        if call.is_accessory:
+            accessories_by_sequence.setdefault(call.sequence_id, []).append(call)
+    drm_evaluation_by_sequence = drm_screening_status_by_sequence(
+        drm_screening_summaries
+    )
+
+    drm_counts = []
+    drm_names = []
+    drm_classes = []
+    drm_evaluation_statuses = []
+    accessory_counts = []
+    accessory_names = []
+    for sequence_id in final_table["Sequence"]:
+        drms = sorted(
+            drms_by_sequence.get(str(sequence_id), []),
+            key=lambda call: (call.gene, call.position, call.mutation),
+        )
+        accessories = sorted(
+            accessories_by_sequence.get(str(sequence_id), []),
+            key=lambda call: (call.gene, call.position, call.mutation),
+        )
+        drm_counts.append(len(drms))
+        drm_names.append(", ".join(call.mutation for call in drms) if drms else "-")
+        accessory_counts.append(len(accessories))
+        accessory_names.append(
+            ", ".join(call.mutation for call in accessories) if accessories else "-"
+        )
+        classes = sorted(
+            {
+                f"{call.drm_class}:{call.drug_class}"
+                for call in drms
+                if call.drm_class or call.drug_class
+            }
+        )
+        drm_classes.append(", ".join(classes) if classes else "-")
+        drm_evaluation_statuses.append(
+            drm_evaluation_by_sequence.get(str(sequence_id), "COMPLETE")
+        )
+
+    final_table = final_table.copy()
+    final_table["DRM Count"] = drm_counts
+    final_table["DRMs"] = drm_names
+    final_table["DRM Classes"] = drm_classes
+    final_table["DRM Evaluation Status"] = drm_evaluation_statuses
+    final_table["Accessory Mutation Count"] = accessory_counts
+    final_table["Accessory Mutations"] = accessory_names
+    return final_table
 
 
 def final_table_columns_for_splitting(should_split: bool) -> list[str]:

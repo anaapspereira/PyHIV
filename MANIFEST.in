@@ -1,1 +1,2 @@
 recursive-include src/pyhiv/loading/reference_genomes *
+recursive-include src/pyhiv/mutations/data *.json HIVFACTS_LICENSE

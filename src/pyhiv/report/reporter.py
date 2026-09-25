@@ -119,6 +119,15 @@ class PyHIVReporter:
                     if pd.isna(subtype_score_warning_value)
                     else str(subtype_score_warning_value)
                 )
+                drms_value = r.get("DRMs", "")
+                drms = "" if pd.isna(drms_value) else str(drms_value)
+                drm_count_value = r.get("DRM Count", "")
+                if pd.isna(drm_count_value):
+                    drm_count = ""
+                elif isinstance(drm_count_value, float) and drm_count_value.is_integer():
+                    drm_count = str(int(drm_count_value))
+                else:
+                    drm_count = str(drm_count_value)
                 mm_region = str(r["Most Matching Gene Region"]) if "Most Matching Gene Region" in r else "-"
                 present_regions_raw = parse_present_regions(r.get("Present Gene Regions", "")) if self.splitting else []
 
@@ -170,6 +179,8 @@ class PyHIVReporter:
                     subtype=subtype,
                     closest_subtypes=closest_subtypes,
                     subtype_score_warning=subtype_score_warning,
+                    drms=drms,
+                    drm_count=drm_count,
                     mm_region=mm_region if mm_region != "-" else "",
                     present_regions=present_regions,
                     features_aln=features_aln,

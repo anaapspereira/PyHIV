@@ -128,6 +128,79 @@ class TestPyHIV(TestCase):
 
         self.assertIsNone(mock_align.call_args.kwargs["allowed_reference_accessions"])
 
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    def test_mutations_force_hxb2_splitting_when_disabled(self):
+        with self.assertLogs(level="WARNING") as logs:
+            PyHIV(
+                fastas_dir=str(DATA_DIR),
+                subtyping=True,
+                splitting=False,
+                output_dir=str(self.output_dir),
+                reporting=False,
+                mutations=True,
+            )
+
+        self.assertIn("using HXB2 splitting", "\n".join(logs.output))
+        self.assertTrue((self.output_dir / "mutations.tsv").exists())
+
+    @patch("pyhiv.align_with_references")
+    @patch("pyhiv.read_input_fastas")
+    @patch("pyhiv.validate_reference_paths")
+    @patch("pyhiv.get_reference_paths")
+    def test_mutations_enabled_writes_mutations_tsv(
+        self,
+        mock_paths,
+        mock_validate,
+        mock_read_fastas,
+        mock_align,
+    ):
+        sequences_with_locations = self.output_dir / "sequences_with_locations.tsv"
+        pd.DataFrame([
+            {
+                "accession": "K03455",
+                "group": "M",
+                "subtype": "B",
+                "features": "{'protease': (1, 6)}",
+            },
+        ]).to_csv(sequences_with_locations, sep="\t", index=False)
+
+        mock_paths.return_value = {
+            "SEQUENCES_WITH_LOCATION": sequences_with_locations,
+            "REFERENCE_GENOMES_FASTAS_DIR": REFERENCE_BASE / "reference_fastas",
+            "HXB2_GENOME_FASTA_DIR": REFERENCE_BASE / "HXB2_fasta",
+        }
+        query = SeqRecord(Seq("ATGGTG"), id="query")
+        query.annotations["source_file"] = "sample.fasta"
+        mock_read_fastas.return_value = [query]
+        mock_align.return_value = ("ATGGTG", "ATGGTG", "K03455-B", [(6, "K03455-B")])
+
+        PyHIV(
+            fastas_dir=str(DATA_DIR),
+            subtyping=False,
+            splitting=True,
+            output_dir=str(self.output_dir),
+            reporting=False,
+            mutations=True,
+        )
+
+        mutations_tsv = self.output_dir / "mutations.tsv"
+        self.assertTrue(mutations_tsv.exists())
+        self.assertIn("sequence_id\tgene\tposition", mutations_tsv.read_text())
+        mutation_matrix = self.output_dir / "mutation_matrix_PR.tsv"
+        self.assertTrue(mutation_matrix.exists())
+        self.assertIn("Sequence\tPR:P1", mutation_matrix.read_text())
+        self.assertIn("REFERENCE\tP", mutation_matrix.read_text())
+        final_table = pd.read_csv(self.output_dir / "final_table.tsv", sep="\t")
+        self.assertIn("DRM Count", final_table.columns)
+        self.assertIn("DRMs", final_table.columns)
+        self.assertIn("DRM Classes", final_table.columns)
+        self.assertIn("Accessory Mutation Count", final_table.columns)
+        self.assertIn("Accessory Mutations", final_table.columns)
+        self.assertEqual(final_table.loc[0, "DRM Count"], 0)
+        self.assertEqual(final_table.loc[0, "DRMs"], "-")
+        self.assertEqual(final_table.loc[0, "Accessory Mutation Count"], 0)
+        self.assertEqual(final_table.loc[0, "Accessory Mutations"], "-")
+
     @patch("pyhiv.align_with_references")
     @patch("pyhiv.read_input_fastas")
     @patch("pyhiv.validate_reference_paths")

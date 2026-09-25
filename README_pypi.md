@@ -69,7 +69,8 @@ PyHIV(
     alignment_tool="edlib-HW",
     kmer_size=15,
     reference_top_k=30,
-    reference_groups="M"
+    reference_groups="M",
+    mutations=False
 )
 ```
 
@@ -82,6 +83,7 @@ When `subtyping=False`, any active splitting mode uses HXB2 coordinates.
 - **Ranked top 3 closest HIV-1 subtypes**
 - **Gene-region–specific FASTA files** (optional)
 - **Final summary table** (`final_table.tsv`)
+- **Mutation, DRM, and per-position QC tables** (optional, with `mutations=True` or `--mutations`)
 - **PDF reports** with sequence visualizations (optional)
 
 ## Output Structure
@@ -89,6 +91,11 @@ When `subtyping=False`, any active splitting mode uses HXB2 coordinates.
 ```
 PyHIV_results/
 ├── final_table.tsv                     # Summary of results
+├── mutations.tsv                       # Mutation calls, if mutation calling is enabled
+├── mutation_position_qc.tsv            # Per-position coverage/QC, if mutation calling is enabled
+├── drm_screening.tsv                   # DRM screening positions, if mutation calling is enabled
+├── drm_screening_summary.tsv           # DRM completeness summary, if mutation calling is enabled
+├── mutation_matrix_<GENE>.tsv          # Compact mutation matrices, if mutation calling is enabled
 ├── best_alignment_<sequence>.fasta     # Alignment to best reference
 ├── PyHIV_report_all_sequences.pdf     # PDF report (if enabled)
 ├── gag/                               # Gene regions (if splitting enabled)
@@ -118,6 +125,12 @@ PyHIV supports `edlib-HW` (default), `parasail-NW`/`parasail`, `PyFamsa`, and `M
 PyHIV resolves MAFFT from `PYHIV_MAFFT_BIN`, then `mafft` on `PATH`.
 
 Input sequences longer than 12000 nucleotides are skipped with this warning: `The submitted sequence is longer than the HIV-1 genome.`
+
+Mutation calling is available for supported split genes (`PR`, `RT`, `IN`, and
+`CA`). It uses HXB2 coordinates and HIVDB Consensus B amino-acid references.
+Nucleotide mutation calling uses the frozen
+`semiglobal_mismatch2_open20_trimmed` backend. IUPAC ambiguity is retained in
+QC fields; resolved IUPAC amino-acid mixtures remain resolved evidence.
 
 ## Documentation
 

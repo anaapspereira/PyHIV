@@ -9,11 +9,13 @@ from pyhiv import __version__
 from pyhiv.cli import (
     cli,
     validate_n_jobs,
+    validate_mutation_gene,
     validate_positive,
     validate_reference_groups,
     validate_reference_top_k,
     validate_splitting,
 )
+from pyhiv.mutations.references import reference_for_gene
 from tests import TEST_DIR
 
 DATA_DIR = TEST_DIR / "data" / "fastas"
@@ -68,6 +70,7 @@ class TestPyHIVCLI(TestCase):
             output_dir=str(self.output_dir),
             n_jobs=2,
             reporting=True,
+            mutations=False,
             alignment_tool="edlib-HW",
             kmer_size=15,
             reference_top_k=30,
@@ -86,6 +89,29 @@ class TestPyHIVCLI(TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertEqual(mock_pyhiv.call_args.kwargs["alignment_tool"], "parasail-NW")
+
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    @patch("pyhiv.PyHIV")
+    def test_run_cli_with_mutations(self, mock_pyhiv):
+        """Test CLI passes mutation calling option to PyHIV."""
+        result = self.runner.invoke(
+            cli, ["run", str(DATA_DIR), "--mutations"]
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertTrue(mock_pyhiv.call_args.kwargs["mutations"])
+
+
+    @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
+    @patch("pyhiv.PyHIV")
+    def test_run_cli_with_mutations_forces_hxb2_when_splitting_disabled(self, mock_pyhiv):
+        result = self.runner.invoke(
+            cli, ["run", str(DATA_DIR), "--mutations", "--splitting", "false"]
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(mock_pyhiv.call_args.kwargs["splitting"], "hxb2")
+        self.assertIn("using HXB2 splitting", result.stderr)
 
     @patch.dict("os.environ", {"REFERENCE_GENOMES_DIR": str(REFERENCE_BASE)})
     @patch("pyhiv.PyHIV")
@@ -240,6 +266,40 @@ class TestPyHIVCLI(TestCase):
         self.assertIn("✓ Found", result.output)
         # Should list at least one file
         self.assertRegex(result.output, r"\s• .+")
+
+    def test_validate_mutation_gene_normalizes_alias(self):
+        self.assertEqual(validate_mutation_gene(None, None, "p51-rt"), "RT")
+
+    def test_mutations_cli_writes_tsv(self):
+        fasta_path = self.output_dir / "rt.fasta"
+        sequence = list(reference_for_gene("RT"))
+        sequence[183] = "V"
+        fasta_path.write_text(f">SEQ001\n{''.join(sequence)}\n")
+        output_path = self.output_dir / "mutations.tsv"
+
+        result = self.runner.invoke(
+            cli,
+            [
+                "mutations",
+                str(self.output_dir),
+                "--gene",
+                "RT",
+                "--sequence-type",
+                "aa",
+                "-o",
+                str(output_path),
+            ],
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertTrue(output_path.exists())
+        self.assertIn("RT:M184V", output_path.read_text())
+        matrix_path = self.output_dir / "mutation_matrix_RT.tsv"
+        self.assertTrue(matrix_path.exists())
+        self.assertIn("REFERENCE\tP", matrix_path.read_text())
+        self.assertIn("SEQ001", matrix_path.read_text())
+        self.assertTrue((self.output_dir / "drm_screening.tsv").exists())
+        self.assertTrue((self.output_dir / "drm_screening_summary.tsv").exists())
 
     @patch("pyhiv.loading.reference_update.update_reference_dataset")
     def test_update_reference_dataset_cli(self, mock_update):

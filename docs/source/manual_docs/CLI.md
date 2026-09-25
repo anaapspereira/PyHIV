@@ -38,6 +38,9 @@ This will:
 - Split sequences into gene regions
 - Save results to `PyHIV_results/`
 
+Add `--mutations` to call amino-acid mutations and write mutation, DRM, and
+per-position QC outputs for supported split genes.
+
 ## 🧭 Commands
 
 ### `pyhiv run`
@@ -64,6 +67,22 @@ Checks:
 - FASTA files are present
 - Lists found files (up to 10)
 
+### `pyhiv mutations`
+
+Call amino-acid mutations directly from gene FASTA files.
+
+```bash
+pyhiv mutations [OPTIONS] FASTAS_DIR
+```
+
+Common options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--gene [PR|RT|IN|CA]` | inferred from path | Gene for all input FASTAs |
+| `--sequence-type [auto|nt|aa]` | `auto` | Input sequence type |
+| `-o`, `--output PATH` | `mutations.tsv` | Mutation TSV output path |
+
 ## ⚙️ Options
 
 ### Processing Options
@@ -72,6 +91,7 @@ Checks:
 |--------|---------|-------------|
 | `--subtyping BOOL` | `true` | Enable/disable HIV-1 subtyping |
 | `--splitting TEXT` | `true` | Splitting mode: `true`/`subtype`, `hxb2`/`reference`, or `false`/`none`. With `--subtyping true`, `true` uses the subtype reference when it has features and falls back to HXB2 when features are missing. If `--subtyping false`, active splitting uses HXB2 |
+| `--mutations / --no-mutations` | `false` | Enable amino-acid mutation calling and DRM/QC outputs |
 
 ### Output Options
 
@@ -236,6 +256,11 @@ PyHIV recursively searches for FASTA files in all subdirectories.
 ```
 PyHIV_results/
 ├── final_table.tsv                    # Summary table
+├── mutations.tsv                      # Mutation calls, if --mutations
+├── mutation_position_qc.tsv           # Per-position coverage/QC, if --mutations
+├── drm_screening.tsv                  # Per-DRM-position screening, if --mutations
+├── drm_screening_summary.tsv          # Per-sequence DRM completeness, if --mutations
+├── mutation_matrix_<GENE>.tsv         # Compact mutation matrices, if --mutations
 ├── best_alignment_inputA_sample1.fasta # Best alignments
 ├── best_alignment_inputB_sample2.fasta
 ├── gag/                               # Gene regions (if --splitting)

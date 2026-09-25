@@ -49,6 +49,17 @@ def validate_reference_groups(ctx, param, value):
         raise click.BadParameter(str(exc)) from exc
 
 
+def validate_mutation_gene(ctx, param, value):
+    """Validate a mutation-calling gene name."""
+    if value is None:
+        return None
+    try:
+        from pyhiv.mutations import normalize_gene
+        return normalize_gene(value)
+    except ValueError as exc:
+        raise click.BadParameter(str(exc)) from exc
+
+
 def validate_splitting(ctx, param, value):
     """Validate splitting mode while preserving true/false compatibility."""
     if isinstance(value, bool):
@@ -128,6 +139,12 @@ def count_fasta_files(directory, exclude_dirs=()):
     help='Enable or disable PDF report generation. When enabled, generates a PDF report with sequence visualizations.'
 )
 @click.option(
+    '--mutations/--no-mutations',
+    default=False,
+    show_default=True,
+    help='Call amino-acid mutations and write mutations.tsv for supported split gene regions.'
+)
+@click.option(
     '--alignment-tool',
     type=click.Choice(ALIGNMENT_TOOL_CHOICES, case_sensitive=False),
     default=DEFAULT_ALIGNMENT_TOOL,
@@ -167,6 +184,7 @@ def main(
     quiet,
     progress,
     reporting,
+    mutations,
     alignment_tool,
     kmer_size,
     reference_top_k,
@@ -240,13 +258,25 @@ def main(
         click.secho("Error: No FASTA files found in the input directory.", fg='red', err=True)
         sys.exit(1)
 
+    splitting_mode = normalize_splitting_mode(splitting, subtyping=subtyping)
+    effective_splitting = splitting
+    if mutations and splitting_mode == "none":
+        effective_splitting = "hxb2"
+        splitting_mode = "hxb2"
+        if not quiet:
+            click.secho(
+                "Warning: mutation calling requires gene-region splitting; using HXB2 splitting even though splitting was disabled.",
+                fg="yellow",
+                err=True,
+            )
+
     if verbose:
-        splitting_mode = normalize_splitting_mode(splitting, subtyping=subtyping)
         click.echo(f"PyHIV v{__version__}")
         click.echo(f"Input directory: {fastas_dir}")
         click.echo(f"Found {num_files} FASTA file(s)")
         click.echo(f"Subtyping: {'enabled' if subtyping else 'disabled'}")
         click.echo(f"Splitting: {splitting_mode}")
+        click.echo(f"Mutations: {'enabled' if mutations else 'disabled'}")
         click.echo(f"Alignment tool: {alignment_tool}")
         click.echo(f"K-mer size: {kmer_size}")
         click.echo(f"Reference top-k: {reference_top_k or 'all'}")
@@ -265,10 +295,11 @@ def main(
         PyHIV(
             fastas_dir=str(fastas_dir),
             subtyping=subtyping,
-            splitting=splitting,
+            splitting=effective_splitting,
             output_dir=str(output_dir) if output_dir else None,
             n_jobs=n_jobs,
             reporting=reporting,
+            mutations=mutations,
             alignment_tool=alignment_tool,
             kmer_size=kmer_size,
             reference_top_k=reference_top_k,
@@ -302,6 +333,15 @@ def main(
                 pdf_report = output_path / 'PyHIV_report_all_sequences.pdf'
                 if pdf_report.exists(): # pragma: no cover
                     click.echo(f"  • {pdf_report}")
+            if mutations:
+                mutations_tsv = output_path / 'mutations.tsv'
+                if mutations_tsv.exists():
+                    click.echo(f"  • {mutations_tsv}")
+                position_qc_tsv = output_path / 'mutation_position_qc.tsv'
+                if position_qc_tsv.exists():
+                    click.echo(f"  • {position_qc_tsv}")
+                for matrix_tsv in sorted(output_path.glob('mutation_matrix_*.tsv')):
+                    click.echo(f"  • {matrix_tsv}")
 
     except ImportError as e:
         click.secho(f"Error: Could not import PyHIV module: {e}", fg='red', err=True)
@@ -338,6 +378,61 @@ def validate(fastas_dir):
         click.echo("\nFiles:")
         for f in files:
             click.echo(f"  • {f.relative_to(fastas_dir)}")
+
+
+@click.command('mutations')
+@click.argument(
+    'fastas_dir',
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path, readable=True),
+)
+@click.option(
+    '--gene',
+    default=None,
+    callback=validate_mutation_gene,
+    help='Gene for all input FASTAs: PR, RT, IN, or CA. If omitted, PyHIV infers it from split-output paths.'
+)
+@click.option(
+    '--sequence-type',
+    type=click.Choice(("auto", "nt", "aa"), case_sensitive=False),
+    default="auto",
+    show_default=True,
+    help='Input sequence type.'
+)
+@click.option(
+    '-o', '--output',
+    type=click.Path(path_type=Path),
+    default=Path("mutations.tsv"),
+    show_default=True,
+    help='Output TSV path.'
+)
+def mutations(fastas_dir, gene, sequence_type, output):
+    """Call amino-acid mutations against HIVDB Consensus B references."""
+    from pyhiv.mutations import (
+        call_mutations_for_fasta_files_with_qc,
+        write_drm_screening_tsv,
+        write_mutation_matrices_tsv,
+        write_mutation_position_qc_tsv,
+        write_mutations_tsv,
+    )
+
+    fasta_files = discover_fasta_files(Path(fastas_dir))
+    calls, screening, position_qc_rows = call_mutations_for_fasta_files_with_qc(
+        fasta_files,
+        gene=gene,
+        sequence_type=sequence_type,
+    )
+    write_mutations_tsv(calls, output)
+    write_mutation_position_qc_tsv(
+        position_qc_rows,
+        output.parent / "mutation_position_qc.tsv",
+    )
+    write_mutation_matrices_tsv(calls, output.parent)
+    write_drm_screening_tsv(
+        screening,
+        output.parent / "drm_screening.tsv",
+        output.parent / "drm_screening_summary.tsv",
+    )
+    click.echo(f"Wrote {len(calls)} mutation row(s) to {output}")
 
 
 @click.group('update')
@@ -482,6 +577,7 @@ def cli():
 
 cli.add_command(main, name='run')
 cli.add_command(validate)
+cli.add_command(mutations)
 update.add_command(update_reference_dataset)
 cli.add_command(update)
 cli.add_command(update_reference_dataset, name='update-reference-dataset')
