@@ -12,6 +12,14 @@ pyhiv.loading.read\_fastas module
    :undoc-members:
    :show-inheritance:
 
+pyhiv.loading.reference\_update module
+---------------------------------------
+
+.. automodule:: pyhiv.loading.reference_update
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
