@@ -386,8 +386,10 @@ def process_fasta_sequence(
 def write_mutations_files(split_output_files: list[Path], output_dir: Path):
     from pyhiv.mutations import (
         call_mutations_for_fasta_files_with_qc,
+        mutation_input_qc_for_fasta_files,
         sequence_gene_pairs_from_fasta_files,
         write_drm_screening_tsv,
+        write_mutation_input_qc_tsv,
         write_mutation_matrices_tsv,
         write_mutation_position_qc_tsv,
         write_mutations_tsv,
@@ -396,7 +398,15 @@ def write_mutations_files(split_output_files: list[Path], output_dir: Path):
     calls, drm_screening_summaries, position_qc_rows = call_mutations_for_fasta_files_with_qc(
         split_output_files
     )
+    input_qc_rows = mutation_input_qc_for_fasta_files(
+        split_output_files,
+        sequence_type="nt",
+    )
     write_mutations_tsv(calls, output_dir / "mutations.tsv")
+    write_mutation_input_qc_tsv(
+        input_qc_rows,
+        output_dir / "mutation_input_qc.tsv",
+    )
     write_mutation_position_qc_tsv(
         position_qc_rows,
         output_dir / "mutation_position_qc.tsv",
@@ -417,8 +427,10 @@ def write_mutations_files(split_output_files: list[Path], output_dir: Path):
 def write_mutations_file(split_output_files: list[Path], output_path: Path):
     from pyhiv.mutations import (
         call_mutations_for_fasta_files_with_qc,
+        mutation_input_qc_for_fasta_files,
         sequence_gene_pairs_from_fasta_files,
         write_drm_screening_tsv,
+        write_mutation_input_qc_tsv,
         write_mutation_matrices_tsv,
         write_mutation_position_qc_tsv,
         write_mutations_tsv,
@@ -427,7 +439,15 @@ def write_mutations_file(split_output_files: list[Path], output_path: Path):
     calls, drm_screening_summaries, position_qc_rows = call_mutations_for_fasta_files_with_qc(
         split_output_files
     )
+    input_qc_rows = mutation_input_qc_for_fasta_files(
+        split_output_files,
+        sequence_type="nt",
+    )
     write_mutations_tsv(calls, output_path)
+    write_mutation_input_qc_tsv(
+        input_qc_rows,
+        output_path.parent / "mutation_input_qc.tsv",
+    )
     write_mutation_position_qc_tsv(
         position_qc_rows,
         output_path.parent / "mutation_position_qc.tsv",

@@ -21,7 +21,10 @@ from Bio.SeqRecord import SeqRecord
 from pyhiv import __version__
 from pyhiv.loading import discover_fasta_files
 from pyhiv.mutations.drm import (
+    DRMAnnotation,
     DRMComponent,
+    LOCAL_DRM_SOURCE,
+    LOCAL_DRM_VERSION,
     UNRESOLVED_CODON_STATUSES,
     annotate_drm,
     drm_evaluation_status,
@@ -50,6 +53,12 @@ MUTATION_TSV_COLUMNS = [
     "hxb2_ref_codon",
     "query_codon",
     "possible_alt_aas",
+    "possible_is_drm",
+    "possible_is_accessory",
+    "possible_drm_class",
+    "possible_drug_class",
+    "possible_mutation_types",
+    "possible_drm_components",
     "codon_status",
     "inserted_nts",
     "deleted_nt_count",
@@ -110,6 +119,18 @@ MUTATION_POSITION_QC_TSV_COLUMNS = [
     "drm_class",
     "drug_class",
     "qc_status",
+]
+MUTATION_INPUT_QC_TSV_COLUMNS = [
+    "sequence_id",
+    "gene",
+    "sequence_type",
+    "input_qc_status",
+    "invalid_symbols",
+    "invalid_symbol_count",
+    "invalid_positions",
+    "invalid_runs",
+    "invalid_run_count",
+    "invalid_run_length_class",
 ]
 
 AA_ALPHABET = set("ABCDEFGHIKLMNPQRSTVWXYZ*-")
@@ -181,6 +202,12 @@ class MutationCall:
     hxb2_ref_codon: str
     query_codon: str
     possible_alt_aas: str
+    possible_is_drm: bool
+    possible_is_accessory: bool
+    possible_drm_class: str
+    possible_drug_class: str
+    possible_mutation_types: str
+    possible_drm_components: tuple[DRMComponent, ...]
     codon_status: str
     inserted_nts: str
     deleted_nt_count: int
@@ -220,6 +247,10 @@ class MutationCall:
             {**asdict(component), "drm_status": component.drm_status}
             for component in self.drm_components
         ], sort_keys=True, separators=(",", ":"))
+        row["possible_drm_components"] = json.dumps([
+            {**asdict(component), "drm_status": component.drm_status}
+            for component in self.possible_drm_components
+        ], sort_keys=True, separators=(",", ":"))
         for field in ("is_drm", "is_accessory"):
             if row[field] is None:
                 row[field] = "UNRESOLVED"
@@ -246,6 +277,23 @@ class DRMScreeningSummary:
     gene: str
     status: str
     positions: tuple[DRMScreeningPosition, ...]
+
+
+@dataclass(frozen=True)
+class MutationInputQC:
+    sequence_id: str
+    gene: str
+    sequence_type: str
+    input_qc_status: str
+    invalid_symbols: str
+    invalid_symbol_count: int
+    invalid_positions: str
+    invalid_runs: str
+    invalid_run_count: int
+    invalid_run_length_class: str
+
+    def to_tsv_row(self) -> dict[str, object]:
+        return asdict(self)
 
 
 @dataclass(frozen=True)
@@ -527,6 +575,120 @@ def infer_sequence_type(sequence: str) -> str:
     if letters <= NT_ALPHABET and len(sequence.replace("-", "")) >= 3:
         return "nt"
     return "aa"
+
+
+def input_qc_sequence_type(sequence: str, sequence_type: str = "auto") -> str:
+    """Return the sequence type used for generic input QC only."""
+    requested = sequence_type.lower()
+    if requested not in {"auto", "nt", "aa"}:
+        raise ValueError("sequence_type must be one of: auto, nt, aa.")
+    if requested != "auto":
+        return requested
+
+    cleaned = "".join(str(sequence).upper().split())
+    if infer_sequence_type(cleaned) == "nt":
+        return "nt"
+
+    non_gap_length = len(cleaned.replace("-", ""))
+    valid_nt_or_invalid = all(
+        symbol in NT_ALPHABET or symbol not in AA_ALPHABET
+        for symbol in cleaned
+    )
+    return "nt" if valid_nt_or_invalid and non_gap_length >= 3 else "aa"
+
+
+def validate_mutation_input_sequence(
+    sequence: str,
+    sequence_id: str,
+    gene: str,
+    sequence_type: str = "auto",
+) -> MutationInputQC:
+    """Validate raw mutation-caller input without changing downstream calling."""
+    canonical_gene = normalize_gene(gene)
+    cleaned = "".join(str(sequence).upper().split())
+    qc_sequence_type = input_qc_sequence_type(cleaned, sequence_type=sequence_type)
+
+    if qc_sequence_type != "nt":
+        return MutationInputQC(
+            sequence_id=sequence_id,
+            gene=canonical_gene,
+            sequence_type=qc_sequence_type,
+            input_qc_status="PASS",
+            invalid_symbols="",
+            invalid_symbol_count=0,
+            invalid_positions="",
+            invalid_runs="",
+            invalid_run_count=0,
+            invalid_run_length_class="none",
+        )
+
+    invalid_positions: list[int] = []
+    invalid_symbols_by_position: list[str] = []
+    run_parts: list[str] = []
+    run_lengths: list[int] = []
+    run_start: int | None = None
+    run_symbols: list[str] = []
+
+    def finish_run() -> None:
+        nonlocal run_start, run_symbols
+        if run_start is None:
+            return
+        run_end = run_start + len(run_symbols) - 1
+        run_text = "".join(run_symbols)
+        run_parts.append(f"{run_start}-{run_end}:{run_text}")
+        run_lengths.append(len(run_symbols))
+        run_start = None
+        run_symbols = []
+
+    for index, symbol in enumerate(cleaned, start=1):
+        if symbol in NT_ALPHABET:
+            finish_run()
+            continue
+        invalid_positions.append(index)
+        invalid_symbols_by_position.append(symbol)
+        if run_start is None:
+            run_start = index
+            run_symbols = [symbol]
+        else:
+            run_symbols.append(symbol)
+    finish_run()
+
+    if not invalid_positions:
+        length_class = "none"
+    elif any(length >= 3 for length in run_lengths) and any(length < 3 for length in run_lengths):
+        length_class = "mixed"
+    elif any(length >= 3 for length in run_lengths):
+        length_class = "triple_or_longer"
+    else:
+        length_class = "short_only"
+
+    invalid_symbols = "".join(sorted(set(invalid_symbols_by_position)))
+    return MutationInputQC(
+        sequence_id=sequence_id,
+        gene=canonical_gene,
+        sequence_type=qc_sequence_type,
+        input_qc_status="WARN" if invalid_positions else "PASS",
+        invalid_symbols=invalid_symbols,
+        invalid_symbol_count=len(invalid_positions),
+        invalid_positions=",".join(str(position) for position in invalid_positions),
+        invalid_runs=";".join(run_parts),
+        invalid_run_count=len(run_parts),
+        invalid_run_length_class=length_class,
+    )
+
+
+def mutation_input_qc_for_record(
+    record: SeqRecord,
+    gene: str,
+    sequence_type: str = "auto",
+) -> MutationInputQC:
+    """Return generic input QC for one mutation-caller FASTA record."""
+    return validate_mutation_input_sequence(
+        sequence=str(record.seq),
+        sequence_id=record.id,
+        gene=gene,
+        sequence_type=sequence_type,
+    )
 
 
 def translate_ambiguous_dna(sequence: str) -> str:
@@ -3375,6 +3537,14 @@ def build_mutation_call(
     mutation = format_mutation(gene, position, ref_aa, alt_aa, mutation_type)
     drm = annotate_drm(gene, position, alt_aa,
                        codon_status=codon_status, mutation_type=mutation_type)
+    possible_drm = possible_drm_annotation(
+        gene=gene,
+        position=position,
+        alt_aa=alt_aa,
+        possible_alt_aas=possible_alt_aas,
+        codon_status=codon_status,
+        mutation_type=mutation_type,
+    )
     return MutationCall(
         sequence_id=sequence_id,
         gene=gene,
@@ -3390,6 +3560,12 @@ def build_mutation_call(
         hxb2_ref_codon=hxb2_ref_codon,
         query_codon=query_codon,
         possible_alt_aas=possible_alt_aas,
+        possible_is_drm=possible_drm.is_drm is True,
+        possible_is_accessory=possible_drm.is_accessory is True,
+        possible_drm_class=possible_drm.drm_class,
+        possible_drug_class=possible_drm.drug_class,
+        possible_mutation_types=possible_drm.mutation_types,
+        possible_drm_components=possible_drm.components,
         codon_status=codon_status,
         inserted_nts=inserted_nts,
         deleted_nt_count=deleted_nt_count,
@@ -3411,6 +3587,45 @@ def build_mutation_call(
         algorithm_version="hxb2-codon-local-v2",
         qc_status=qc_status,
     )
+
+
+def possible_drm_annotation(
+    gene: str,
+    position: int,
+    alt_aa: str,
+    possible_alt_aas: str,
+    codon_status: str,
+    mutation_type: str,
+) -> DRMAnnotation:
+    status_tokens = {token for token in codon_status.split("|") if token}
+    no_possible_drm = DRMAnnotation(
+        False,
+        LOCAL_DRM_SOURCE,
+        "",
+        "",
+        drm_version=LOCAL_DRM_VERSION,
+        drm_catalog_sha256=load_catalog_sha256(),
+    )
+    if (
+        mutation_type != "substitution"
+        or alt_aa != "X"
+        or not possible_alt_aas
+        or possible_alt_aas == "X"
+        or UNRESOLVED_CODON_STATUSES.intersection(status_tokens)
+    ):
+        return no_possible_drm
+    return annotate_drm(
+        gene,
+        position,
+        normalize_alt_aa("", possible_alt_aas),
+        codon_status=codon_status,
+        mutation_type=mutation_type,
+    )
+
+
+@lru_cache(maxsize=1)
+def load_catalog_sha256() -> str:
+    return annotate_drm("PR", 1, "P").drm_catalog_sha256
 
 
 def normalize_alt_aa(ref_aa: str, alt_aa: str) -> str:
@@ -3508,6 +3723,29 @@ def call_mutations_for_fasta_files_with_qc(
                 summaries.append(screening)
                 position_qc_rows.extend(record_position_qc)
     return calls, summaries, position_qc_rows
+
+
+def mutation_input_qc_for_fasta_files(
+    paths: Iterable[Path],
+    gene: str | None = None,
+    sequence_type: str = "auto",
+) -> list[MutationInputQC]:
+    """Return generic input QC rows for records from FASTA files."""
+    rows: list[MutationInputQC] = []
+    for path in paths:
+        inferred_gene = normalize_gene(gene) if gene else infer_gene_from_path(path)
+        if inferred_gene is None:
+            continue
+        with open(path, "r") as handle:
+            for record in SeqIO.parse(handle, "fasta"):
+                rows.append(
+                    mutation_input_qc_for_record(
+                        record,
+                        inferred_gene,
+                        sequence_type=sequence_type,
+                    )
+                )
+    return rows
 
 
 def call_mutations_for_directory(
@@ -3646,6 +3884,25 @@ def write_mutation_matrices_tsv(
         paths.append(output_path)
     return paths
 
+
+
+def write_mutation_input_qc_tsv(
+    rows: Iterable[MutationInputQC],
+    output_path: Path,
+) -> None:
+    """Write one row per sequence/gene for generic mutation input QC."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", newline="") as handle:
+        writer = csv.DictWriter(
+            handle, fieldnames=MUTATION_INPUT_QC_TSV_COLUMNS, delimiter="	"
+        )
+        writer.writeheader()
+        for row in rows:
+            tsv_row = row.to_tsv_row()
+            writer.writerow({
+                column: tsv_row[column]
+                for column in MUTATION_INPUT_QC_TSV_COLUMNS
+            })
 
 
 def write_mutation_position_qc_tsv(

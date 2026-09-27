@@ -142,6 +142,7 @@ class TestPyHIV(TestCase):
 
         self.assertIn("using HXB2 splitting", "\n".join(logs.output))
         self.assertTrue((self.output_dir / "mutations.tsv").exists())
+        self.assertTrue((self.output_dir / "mutation_input_qc.tsv").exists())
 
     @patch("pyhiv.align_with_references")
     @patch("pyhiv.read_input_fastas")
@@ -186,6 +187,9 @@ class TestPyHIV(TestCase):
         mutations_tsv = self.output_dir / "mutations.tsv"
         self.assertTrue(mutations_tsv.exists())
         self.assertIn("sequence_id\tgene\tposition", mutations_tsv.read_text())
+        input_qc_tsv = self.output_dir / "mutation_input_qc.tsv"
+        self.assertTrue(input_qc_tsv.exists())
+        self.assertIn("sequence_id\tgene\tsequence_type\tinput_qc_status", input_qc_tsv.read_text())
         mutation_matrix = self.output_dir / "mutation_matrix_PR.tsv"
         self.assertTrue(mutation_matrix.exists())
         self.assertIn("Sequence\tPR:P1", mutation_matrix.read_text())

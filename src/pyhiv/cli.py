@@ -142,7 +142,7 @@ def count_fasta_files(directory, exclude_dirs=()):
     '--mutations/--no-mutations',
     default=False,
     show_default=True,
-    help='Call amino-acid mutations and write mutations.tsv for supported split gene regions.'
+    help='Call amino-acid mutations and write mutation, DRM, matrix, and per-position QC outputs for supported split gene regions.'
 )
 @click.option(
     '--alignment-tool',
@@ -337,6 +337,9 @@ def main(
                 mutations_tsv = output_path / 'mutations.tsv'
                 if mutations_tsv.exists():
                     click.echo(f"  • {mutations_tsv}")
+                input_qc_tsv = output_path / 'mutation_input_qc.tsv'
+                if input_qc_tsv.exists():
+                    click.echo(f"  • {input_qc_tsv}")
                 position_qc_tsv = output_path / 'mutation_position_qc.tsv'
                 if position_qc_tsv.exists():
                     click.echo(f"  • {position_qc_tsv}")
@@ -409,7 +412,9 @@ def mutations(fastas_dir, gene, sequence_type, output):
     """Call amino-acid mutations against HIVDB Consensus B references."""
     from pyhiv.mutations import (
         call_mutations_for_fasta_files_with_qc,
+        mutation_input_qc_for_fasta_files,
         write_drm_screening_tsv,
+        write_mutation_input_qc_tsv,
         write_mutation_matrices_tsv,
         write_mutation_position_qc_tsv,
         write_mutations_tsv,
@@ -421,7 +426,16 @@ def mutations(fastas_dir, gene, sequence_type, output):
         gene=gene,
         sequence_type=sequence_type,
     )
+    input_qc_rows = mutation_input_qc_for_fasta_files(
+        fasta_files,
+        gene=gene,
+        sequence_type=sequence_type,
+    )
     write_mutations_tsv(calls, output)
+    write_mutation_input_qc_tsv(
+        input_qc_rows,
+        output.parent / "mutation_input_qc.tsv",
+    )
     write_mutation_position_qc_tsv(
         position_qc_rows,
         output.parent / "mutation_position_qc.tsv",

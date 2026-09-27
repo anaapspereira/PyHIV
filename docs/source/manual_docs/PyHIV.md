@@ -120,6 +120,7 @@ PyHIV_results/
 ├── splitting_alignment_<file_stem>_<sequence>.fasta # HXB2 alignment when splitting uses HXB2 with subtyping
 ├── final_table.tsv                     # Summary of results
 ├── mutations.tsv                       # Mutation calls, if mutations=True
+├── mutation_input_qc.tsv               # Generic pre-caller input QC, if mutations=True
 ├── mutation_position_qc.tsv            # Per-position coverage/QC, if mutations=True
 ├── drm_screening.tsv                   # Per-DRM-position screening, if mutations=True
 ├── drm_screening_summary.tsv           # Per-sequence DRM completeness, if mutations=True
@@ -222,7 +223,7 @@ pyhiv validate data/sequences/
 
 PyHIV generates:
 - `final_table.tsv` - Summary with sequence IDs, references, group/subtype calls, closest subtypes, and gene regions
-- `mutations.tsv`, `mutation_position_qc.tsv`, `drm_screening.tsv`, and `drm_screening_summary.tsv` when mutation calling is enabled
+- `mutations.tsv`, `mutation_input_qc.tsv`, `mutation_position_qc.tsv`, `drm_screening.tsv`, and `drm_screening_summary.tsv` when mutation calling is enabled
 - `best_alignment_*.fasta` - Best alignment for each sequence
 - Gene-specific folders (when `--splitting` is enabled) with extracted regions
 

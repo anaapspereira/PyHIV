@@ -40,6 +40,7 @@ It produces:
 - Ranked top 3 closest HIV-1 subtypes
 - Gene-region–specific FASTA files (optional)  
 - A final summary table (`final_table.tsv`)  
+- Amino-acid mutation, DRM, accessory mutation, and per-position QC tables (optional)
 
 ---
 
@@ -219,6 +220,8 @@ PyHIV_results/
 | **DRMs**                      | Resolved DRM mutation names, when mutation calling is enabled |
 | **DRM Classes**               | Drug classes for resolved DRMs, when mutation calling is enabled |
 | **DRM Evaluation Status**     | `COMPLETE`, `PARTIAL`, or `UNRESOLVED` DRM screening status |
+| **Accessory Mutation Count**  | Number of resolved HIVDB accessory mutation calls, when mutation calling is enabled |
+| **Accessory Mutations**       | Resolved accessory mutation names, when mutation calling is enabled |
 
 
 ---
@@ -255,11 +258,16 @@ pyhiv validate sequences/
 | `-q`, `--quiet` | Suppress non-error output |
 | `--mutations / --no-mutations` | Enable amino-acid mutation calling and DRM/QC outputs (default: disabled). |
 
-Mutation calling uses HXB2 coordinates and HIVDB Consensus B amino-acid
-references. The nucleotide mutation caller uses the frozen
-`semiglobal_mismatch2_open20_trimmed` backend. IUPAC codons that translate to a
-resolved amino-acid set remain resolved mixtures; `AMBIGUOUS` is retained in QC
-fields but does not by itself make DRM annotation unresolved.
+Mutation calling supports split-gene FASTA files for `PR`, `RT`, `IN`, and
+`CA`. It uses HXB2 coordinates and HIVDB Consensus B amino-acid references. The
+nucleotide mutation caller uses the frozen
+`semiglobal_mismatch2_open20_trimmed` backend, selected after the
+`analysis_outputs/pol2024_final_trimmed_2026-09-25/comparison_mismatch2_vs_trimmed.tsv`
+comparison because terminal query overhang trimming removed the artificial
+terminal insertion calls seen with the untrimmed backend while preserving DRM
+sets in the benchmark. IUPAC codons that translate to a resolved amino-acid set
+remain resolved mixtures; `AMBIGUOUS` is retained in QC fields but does not by
+itself make DRM annotation unresolved.
 
 ### 💼 Common Use Cases
 
@@ -283,6 +291,17 @@ pyhiv run data/sequences/ --splitting false
 pyhiv run data/sequences/ --splitting hxb2
 ```
 
+**Full pipeline with mutation calling:**
+```bash
+pyhiv run data/sequences/ --mutations
+```
+
+**Direct mutation calling on split gene FASTAs:**
+```bash
+pyhiv mutations results/pol/protease --gene PR -o results/mutations.tsv
+pyhiv mutations results/pol/p31-integrase --gene IN -o results/in_mutations.tsv
+```
+
 **Parallel processing for large datasets:**
 ```bash
 pyhiv run data/sequences/ -j 8 -o results/batch1/
@@ -299,6 +318,7 @@ pyhiv validate data/sequences/
 pyhiv --help           # Show all commands
 pyhiv run --help       # Show options for run command
 pyhiv validate --help # Show validation options
+pyhiv mutations --help # Show direct mutation-calling options
 pyhiv --version        # Show version
 ```
 

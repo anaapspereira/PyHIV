@@ -294,6 +294,9 @@ class TestPyHIVCLI(TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertTrue(output_path.exists())
         self.assertIn("RT:M184V", output_path.read_text())
+        input_qc_path = self.output_dir / "mutation_input_qc.tsv"
+        self.assertTrue(input_qc_path.exists())
+        self.assertIn("SEQ001\tRT\taa\tPASS", input_qc_path.read_text())
         matrix_path = self.output_dir / "mutation_matrix_RT.tsv"
         self.assertTrue(matrix_path.exists())
         self.assertIn("REFERENCE\tP", matrix_path.read_text())
