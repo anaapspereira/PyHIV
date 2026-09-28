@@ -13,7 +13,7 @@ from pyhiv.align import (
     validate_alignment_tool_available,
 )
 from pyhiv.config import get_reference_paths, validate_reference_paths
-from pyhiv.loading import read_input_fastas
+from pyhiv.loading import input_qc_rows_for_records, read_input_fastas, write_input_qc_tsv
 from pyhiv.split import (
     feature_output_location,
     get_gene_region,
@@ -124,6 +124,10 @@ def PyHIV(fastas_dir: str, subtyping: bool = True, splitting: bool = True,
     output_dir.mkdir(parents=True, exist_ok=True)
 
     user_fastas = read_input_fastas(fastas_dir, exclude_dirs=[output_dir])
+    write_input_qc_tsv(
+        input_qc_rows_for_records(user_fastas),
+        output_dir / "input_qc.tsv",
+    )
     reference_sequences = pd.read_csv(paths["SEQUENCES_WITH_LOCATION"], sep='\t')
     metadata_by_accession = build_reference_metadata(reference_sequences)
     reference_group_filter_requested = reference_groups is not None

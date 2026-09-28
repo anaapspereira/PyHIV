@@ -1,3 +1,4 @@
+import csv
 import tempfile
 from pathlib import Path
 from unittest import TestCase, mock
@@ -6,7 +7,14 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
-from pyhiv.loading import discover_fasta_files, read_input_fastas
+from pyhiv.loading import (
+    INPUT_QC_TSV_COLUMNS,
+    discover_fasta_files,
+    input_qc_rows_for_records,
+    read_input_fastas,
+    validate_input_sequence,
+    write_input_qc_tsv,
+)
 from tests import TEST_DIR
 
 
@@ -108,6 +116,56 @@ class TestReadFastas(TestCase):
         # Check that the warning for no supported FASTA files was triggered
         mock_warning.assert_called_once()
         self.assertIn("No FASTA files with supported extensions found", mock_warning.call_args[0][0])
+
+    def test_validate_input_sequence_passes_iupac_nt_symbols(self):
+        row = validate_input_sequence(
+            "ACGTRYSWKMBDHVN-",
+            sequence_id="seq1",
+            file_name="sample.fasta",
+        )
+
+        self.assertEqual(row.file_name, "sample.fasta")
+        self.assertEqual(row.sequence_id, "seq1")
+        self.assertEqual(row.sequence_length, 16)
+        self.assertEqual(row.input_qc_status, "PASS")
+        self.assertEqual(row.invalid_symbols, "")
+        self.assertEqual(row.invalid_symbol_count, 0)
+        self.assertEqual(row.invalid_positions, "")
+        self.assertEqual(row.invalid_runs, "")
+        self.assertEqual(row.invalid_run_count, 0)
+        self.assertEqual(row.invalid_run_length_class, "none")
+
+    def test_validate_input_sequence_warns_on_invalid_symbols(self):
+        row = validate_input_sequence(
+            "AC~T~~A***",
+            sequence_id="seq1",
+            file_name="sample.fasta",
+        )
+
+        self.assertEqual(row.input_qc_status, "WARN")
+        self.assertEqual(row.invalid_symbols, "*~")
+        self.assertEqual(row.invalid_symbol_count, 6)
+        self.assertEqual(row.invalid_positions, "3,5,6,8,9,10")
+        self.assertEqual(row.invalid_runs, "3-3:~;5-6:~~;8-10:***")
+
+    def test_writes_input_qc_tsv_for_records(self):
+        record = SeqRecord(Seq("AC~T~~A"), id="seq1")
+        record.annotations["source_file"] = "sample.fasta"
+        rows = input_qc_rows_for_records([record])
+        path = self.input_path / "input_qc.tsv"
+
+        write_input_qc_tsv(rows, path)
+
+        with path.open() as stream:
+            output_rows = list(csv.DictReader(stream, delimiter="	"))
+        self.assertEqual(output_rows[0]["file_name"], "sample.fasta")
+        self.assertEqual(output_rows[0]["sequence_id"], "seq1")
+        self.assertEqual(output_rows[0]["input_qc_status"], "WARN")
+        self.assertEqual(output_rows[0]["invalid_symbols"], "~")
+        self.assertEqual(output_rows[0]["invalid_symbol_count"], "3")
+        self.assertEqual(output_rows[0]["invalid_positions"], "3,5,6")
+        self.assertEqual(output_rows[0]["invalid_runs"], "3-3:~;5-6:~~")
+        self.assertEqual(list(output_rows[0]), INPUT_QC_TSV_COLUMNS)
 
     def test_discover_fasta_files_finds_nested_files(self):
         """Should recursively find FASTA files inside subdirectories."""

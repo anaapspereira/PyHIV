@@ -320,6 +320,9 @@ def main(
             final_table = output_path / 'final_table.tsv'
             if final_table.exists():
                 click.echo(f"  • {final_table}")
+            input_qc_tsv = output_path / 'input_qc.tsv'
+            if input_qc_tsv.exists():
+                click.echo(f"  • {input_qc_tsv}")
 
             # List some alignment files
             alignment_files = list(output_path.glob('best_alignment_*.fasta'))

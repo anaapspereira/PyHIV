@@ -65,6 +65,9 @@ class TestPyHIV(TestCase):
         # Check that final table exists and has correct columns
         table_file = self.output_dir / "final_table.tsv"
         self.assertTrue(table_file.exists())
+        input_qc_tsv = self.output_dir / "input_qc.tsv"
+        self.assertTrue(input_qc_tsv.exists())
+        self.assertIn("file_name\tsequence_id\tsequence_length\tinput_qc_status", input_qc_tsv.read_text())
         table = pd.read_csv(table_file, sep='\t')
         expected_cols = [
             'File Name', 'Sequence', 'Reference', 'Group', 'Subtype', 'Closest Subtypes',
@@ -184,6 +187,9 @@ class TestPyHIV(TestCase):
             mutations=True,
         )
 
+        main_input_qc_tsv = self.output_dir / "input_qc.tsv"
+        self.assertTrue(main_input_qc_tsv.exists())
+        self.assertIn("query", main_input_qc_tsv.read_text())
         mutations_tsv = self.output_dir / "mutations.tsv"
         self.assertTrue(mutations_tsv.exists())
         self.assertIn("sequence_id\tgene\tposition", mutations_tsv.read_text())

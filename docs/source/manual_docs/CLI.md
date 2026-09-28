@@ -256,6 +256,7 @@ PyHIV recursively searches for FASTA files in all subdirectories.
 ```
 PyHIV_results/
 ├── final_table.tsv                    # Summary table
+├── input_qc.tsv                       # Generic input sequence QC
 ├── mutations.tsv                      # Mutation calls, if --mutations
 ├── mutation_input_qc.tsv              # Generic pre-caller input QC, if --mutations
 ├── mutation_position_qc.tsv           # Per-position coverage/QC, if --mutations
