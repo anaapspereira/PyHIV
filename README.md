@@ -1,4 +1,4 @@
-# 🧬 PyHIV: A Python Package for Local HIV‑1 Sequence Alignment, Subtyping and Gene Splitting 
+# 🧬 PyHIV: A Python Package for Local HIV-1 Sequence Alignment, Subtype/CRF Assignment and Gene-Region Partitioning 
 
 <div align="center">
 
