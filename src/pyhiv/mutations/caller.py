@@ -141,6 +141,15 @@ HXB2_GENE_COORDINATES = {
     "IN": (4230, 5093),
     "CA": (1186, 1878),
 }
+BROAD_MUTATION_GENE_TARGETS = {
+    "POL": ("PR", "RT", "IN"),
+    "POL-CDS": ("PR", "RT", "IN"),
+    "GAG": ("CA",),
+    "GAG-CDS": ("CA",),
+    "GAG-POL": ("CA", "PR", "RT", "IN"),
+    "GAG-POL-FUSION": ("CA", "PR", "RT", "IN"),
+    "GAG-POL-PRECURSOR": ("CA", "PR", "RT", "IN"),
+}
 IUPAC_DNA = {
     "A": "A",
     "C": "C",
@@ -3655,11 +3664,13 @@ def call_mutations_for_fasta_files(
     """Call mutations for records from FASTA files."""
     calls: list[MutationCall] = []
     for path in paths:
-        inferred_gene = normalize_gene(gene) if gene else infer_gene_from_path(path)
-        if inferred_gene is None:
+        inferred_genes = (normalize_gene(gene),) if gene else infer_gene_targets_from_path(path)
+        if not inferred_genes:
             continue
         with open(path, "r") as handle:
-            for record in SeqIO.parse(handle, "fasta"):
+            records = list(SeqIO.parse(handle, "fasta"))
+        for inferred_gene in inferred_genes:
+            for record in records:
                 calls.extend(
                     call_mutations_for_record(
                         record,
@@ -3681,11 +3692,13 @@ def call_mutations_for_fasta_files_with_drm_screening(
     calls: list[MutationCall] = []
     summaries: list[DRMScreeningSummary] = []
     for path in paths:
-        inferred_gene = normalize_gene(gene) if gene else infer_gene_from_path(path)
-        if inferred_gene is None:
+        inferred_genes = (normalize_gene(gene),) if gene else infer_gene_targets_from_path(path)
+        if not inferred_genes:
             continue
         with open(path, "r") as handle:
-            for record in SeqIO.parse(handle, "fasta"):
+            records = list(SeqIO.parse(handle, "fasta"))
+        for inferred_gene in inferred_genes:
+            for record in records:
                 record_calls, screening = call_mutations_for_record_with_drm_screening(
                     record,
                     inferred_gene,
@@ -3708,11 +3721,13 @@ def call_mutations_for_fasta_files_with_qc(
     summaries: list[DRMScreeningSummary] = []
     position_qc_rows: list[MutationPositionQC] = []
     for path in paths:
-        inferred_gene = normalize_gene(gene) if gene else infer_gene_from_path(path)
-        if inferred_gene is None:
+        inferred_genes = (normalize_gene(gene),) if gene else infer_gene_targets_from_path(path)
+        if not inferred_genes:
             continue
         with open(path, "r") as handle:
-            for record in SeqIO.parse(handle, "fasta"):
+            records = list(SeqIO.parse(handle, "fasta"))
+        for inferred_gene in inferred_genes:
+            for record in records:
                 record_calls, screening, record_position_qc = call_mutations_for_record_with_qc(
                     record,
                     inferred_gene,
@@ -3733,11 +3748,13 @@ def mutation_input_qc_for_fasta_files(
     """Return generic input QC rows for records from FASTA files."""
     rows: list[MutationInputQC] = []
     for path in paths:
-        inferred_gene = normalize_gene(gene) if gene else infer_gene_from_path(path)
-        if inferred_gene is None:
+        inferred_genes = (normalize_gene(gene),) if gene else infer_gene_targets_from_path(path)
+        if not inferred_genes:
             continue
         with open(path, "r") as handle:
-            for record in SeqIO.parse(handle, "fasta"):
+            records = list(SeqIO.parse(handle, "fasta"))
+        for inferred_gene in inferred_genes:
+            for record in records:
                 rows.append(
                     mutation_input_qc_for_record(
                         record,
@@ -3765,16 +3782,68 @@ def call_mutations_for_directory(
 
 
 def infer_gene_from_path(path: Path) -> str | None:
-    """Infer a supported gene from a PyHIV split-output path."""
+    """Infer one directly supported gene from a PyHIV split-output path."""
+    targets = infer_gene_targets_from_path(path, include_broad=False)
+    return targets[0] if targets else None
+
+
+def infer_gene_targets_from_path(path: Path, include_broad: bool = True) -> tuple[str, ...]:
+    """Infer mutation-caller target genes represented by a split-output path."""
     candidates = [path.stem, *[part for part in path.parts[-4:-1]]]
     for candidate in candidates:
-        cleaned = candidate.replace("_", "-")
-        for token in (cleaned, cleaned.split("-")[-1]):
+        for token in _gene_path_tokens(candidate):
             try:
-                return normalize_gene(token)
+                return (normalize_gene(token),)
             except ValueError:
                 continue
-    return None
+    if include_broad:
+        broad_candidates = [path.parent.name, path.stem]
+        for candidate in broad_candidates:
+            for token in _broad_gene_path_tokens(candidate):
+                broad_targets = BROAD_MUTATION_GENE_TARGETS.get(_broad_gene_key(token))
+                if broad_targets:
+                    return broad_targets
+    return ()
+
+
+def _gene_path_tokens(value: str) -> tuple[str, ...]:
+    cleaned = str(value or "").replace("_", "-").replace(" ", "-").strip("-")
+    parts = [part for part in cleaned.split("-") if part]
+    tokens = [cleaned]
+    if parts:
+        tokens.append(parts[-1])
+        tokens.extend(parts)
+        if len(parts) >= 2:
+            tokens.extend("-".join(parts[index:]) for index in range(1, len(parts)))
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for token in tokens:
+        key = token.upper()
+        if key not in seen:
+            seen.add(key)
+            ordered.append(token)
+    return tuple(ordered)
+
+
+def _broad_gene_path_tokens(value: str) -> tuple[str, ...]:
+    cleaned = str(value or "").replace("_", "-").replace(" ", "-").strip("-")
+    parts = [part for part in cleaned.split("-") if part]
+    tokens = [cleaned]
+    if len(parts) >= 2:
+        tokens.extend("-".join(parts[index:]) for index in range(1, len(parts)))
+    tokens.extend(parts)
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for token in tokens:
+        key = token.upper()
+        if key not in seen:
+            seen.add(key)
+            ordered.append(token)
+    return tuple(ordered)
+
+
+def _broad_gene_key(value: str) -> str:
+    return str(value or "").replace("_", "-").replace(" ", "-").upper()
 
 
 def sequence_gene_pairs_from_fasta_files(
@@ -3785,15 +3854,16 @@ def sequence_gene_pairs_from_fasta_files(
     pairs: list[tuple[str, str]] = []
     seen: set[tuple[str, str]] = set()
     for path in paths:
-        inferred_gene = normalize_gene(gene) if gene else infer_gene_from_path(path)
-        if inferred_gene is None:
+        inferred_genes = (normalize_gene(gene),) if gene else infer_gene_targets_from_path(path)
+        if not inferred_genes:
             continue
         with open(path, "r") as handle:
             for record in SeqIO.parse(handle, "fasta"):
-                key = (record.id, inferred_gene)
-                if key not in seen:
-                    pairs.append(key)
-                    seen.add(key)
+                for inferred_gene in inferred_genes:
+                    key = (record.id, inferred_gene)
+                    if key not in seen:
+                        pairs.append(key)
+                        seen.add(key)
     return pairs
 
 

@@ -125,6 +125,10 @@ PyHIV_results/
 ├── mutation_position_qc.tsv            # Per-position coverage/QC, if mutations=True
 ├── drm_screening.tsv                   # Per-DRM-position screening, if mutations=True
 ├── drm_screening_summary.tsv           # Per-sequence DRM completeness, if mutations=True
+├── other_region_mutations.tsv          # HXB2 mutation calls for supported non-PR/RT/IN/CA regions, if mutations=True/--mutations
+├── other_region_resistance.tsv         # Catalogue-matched non-PR/RT/IN/CA resistance markers, if any
+├── other_region_warnings.tsv           # Warnings for regions without local resistance markers
+├── other_region_mutation_matrix_<REGION>.tsv # Compact matrices for supported other regions, if present
 ├── mutation_matrix_<GENE>.tsv          # Compact mutation matrices, if mutations=True
 │
 ├── gag/

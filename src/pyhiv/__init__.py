@@ -425,6 +425,7 @@ def write_mutations_files(split_output_files: list[Path], output_dir: Path):
         output_dir / "drm_screening.tsv",
         output_dir / "drm_screening_summary.tsv",
     )
+    write_other_region_mutation_files(split_output_files, output_dir)
     return calls, drm_screening_summaries
 
 
@@ -466,7 +467,34 @@ def write_mutations_file(split_output_files: list[Path], output_path: Path):
         output_path.parent / "drm_screening.tsv",
         output_path.parent / "drm_screening_summary.tsv",
     )
+    write_other_region_mutation_files(split_output_files, output_path.parent)
     return calls, drm_screening_summaries
+
+
+def write_other_region_mutation_files(split_output_files: list[Path], output_dir: Path):
+    from pyhiv.mutations import (
+        call_other_region_mutations_for_fasta_files,
+        sequence_region_pairs_from_fasta_files,
+        write_other_region_mutation_matrices_tsv,
+        write_other_region_mutations_tsv,
+        write_other_region_resistance_tsv,
+        write_other_region_warnings_tsv,
+    )
+
+    calls = call_other_region_mutations_for_fasta_files(split_output_files)
+    sequence_region_pairs = sequence_region_pairs_from_fasta_files(split_output_files)
+    write_other_region_mutations_tsv(calls, output_dir / "other_region_mutations.tsv")
+    write_other_region_resistance_tsv(calls, output_dir / "other_region_resistance.tsv")
+    write_other_region_warnings_tsv(
+        sequence_region_pairs,
+        output_dir / "other_region_warnings.tsv",
+    )
+    write_other_region_mutation_matrices_tsv(
+        calls,
+        output_dir,
+        sequence_region_pairs=sequence_region_pairs,
+    )
+    return calls
 
 
 def append_drm_summary(
